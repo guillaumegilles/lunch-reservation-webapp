@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Calendrier de {{ username }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            display: flex;
+            gap: 40px;
+        }
+        .calendar-container {
+            width: 700px;
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+        .day {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            text-align: center;
+            padding: 10px;
+            min-height: 80px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            position: relative;
+        }
+        .day:hover { background-color: #dbeafe; }
+        .selected { background-color: #60a5fa; color: white; }
+        .lunch-label { font-size: 0.8em; color: #333; margin-top: 5px; }
+        .weekday-header { font-weight: bold; text-align: center; }
+        .side-panel {
+            width: 250px;
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #fafafa;
+            height: fit-content;
+        }
+        select, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+        }
+        a.button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        a.button:hover { background-color: #2563eb; }
+    </style>
+</head>
+<body>
+<a class="button" href="{{ url_for('admin_summary', year=year, month=month) }}">🔍 View Admin Summary</a>
+    <div class="calendar-container">
+        <div class="nav">
+            <a class="button" href="{{ url_for('calendar_view', username=username, year=prev_year, month=prev_month) }}">← Previous</a>
+            <h2>Calendrier de {{ username }} — {{ month_name }} {{ year }}</h2>
+            <a class="button" href="{{ url_for('calendar_view', username=username, year=next_year, month=next_month) }}">Next →</a>
+        </div>
+
+        <div class="calendar">
+            {% for weekday in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+            <div class="weekday-header">{{ weekday }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="calendar">
+            {% for d in days %}
+            <div class="day" onclick="selectDay({{ d.day }})" id="day-{{ d.day }}">
+                <div>{{ d.day }}</div>
+                {% if lunches.get('%04d-%02d-%02d' % (year, month, d.day)) %}
+                <div class="lunch-label">
+                    {{ lunches['%04d-%02d-%02d' % (year, month, d.day)] }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="side-panel" id="sidePanel">
+        <h3>Select a day</h3>
+        <p id="selectedDay">No day selected</p>
+        <select id="lunchOption">
+            <option value="">-- Choose lunch --</option>
+            {% for opt in options %}
+            <option value="{{ opt }}">{{ opt }}</option>
+            {% endfor %}
+        </select>
+        <button onclick="saveLunch()">Save Lunch</button>
+        <p id="statusMsg"></p>
+    </div>
+
+    <script>
+        let selectedDay = null;
+        const username = "{{ username }}";
+        const year = {{ year }};
+        const month = {{ month }};
+
+        function selectDay(day) {
+            document.querySelectorAll('.day').forEach(el => el.classList.remove('selected'));
+            const el = document.getElementById(`day-${day}`);
+            el.classList.add('selected');
+
+            selectedDay = day;
+            document.getElementById('selectedDay').innerText = "Day " + day;
+            document.getElementById('statusMsg').innerText = "";
+        }
+
+        async function saveLunch() {
+            const lunch = document.getElementById('lunchOption').value;
+            if (!selectedDay || !lunch) {
+                alert("Please select a day and a lunch option.");
+                return;
+            }
+
+            const response = await fetch("/save_lunch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, day: selectedDay, lunch, year, month })
+            });
+
+            const data = await response.json();
+            document.getElementById('statusMsg').innerText = data.message;
+
+            // Update the day box with lunch emoji/text
+            const dayBox = document.getElementById(`day-${selectedDay}`);
+            let label = dayBox.querySelector(".lunch-label");
+            if (!label) {
+                label = document.createElement("div");
+                label.className = "lunch-label";
+                dayBox.appendChild(label);
+            }
+            label.innerText = lunch;
+        }
+    </script>
+</body>
+</html>
+
