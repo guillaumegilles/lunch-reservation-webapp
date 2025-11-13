@@ -1,7 +1,7 @@
-import sqlite3
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from calendar import monthrange, month_name
-from datetime import date, datetime
+from datetime import date
+import sqlite3
 
 app = Flask(__name__)
 

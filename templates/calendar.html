@@ -2,98 +2,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Calendrier de {{ username }}</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            display: flex;
-            gap: 40px;
-        }
-        .calendar-container {
-            width: 700px;
-        }
-        .nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .calendar {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-        }
-        .day {
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            text-align: center;
-            padding: 10px;
-            min-height: 80px;
-            background-color: #f9f9f9;
-            cursor: pointer;
-            position: relative;
-        }
-        .day:hover { background-color: #dbeafe; }
-        .selected { background-color: #60a5fa; color: white; }
-        .lunch-label { font-size: 0.8em; color: #333; margin-top: 5px; }
-        .weekday-header { font-weight: bold; text-align: center; }
-        .side-panel {
-            width: 250px;
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 10px;
-            background-color: #fafafa;
-            height: fit-content;
-        }
-        select, button {
-            width: 100%;
-            margin-top: 10px;
-            padding: 8px;
-        }
-        a.button {
-            background-color: #3b82f6;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 5px;
-            text-decoration: none;
-        }
-        a.button:hover { background-color: #2563eb; }
-    </style>
+    <title>{{ username }}'s Lunch Calendar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-<a class="button" href="{{ url_for('admin_summary', year=year, month=month) }}">🔍 View Admin Summary</a>
-    <div class="calendar-container">
-        <div class="nav">
-            <a class="button" href="{{ url_for('calendar_view', username=username, year=prev_year, month=prev_month) }}">← Previous</a>
-            <h2>Calendrier de {{ username }} — {{ month_name }} {{ year }}</h2>
-            <a class="button" href="{{ url_for('calendar_view', username=username, year=next_year, month=next_month) }}">Next →</a>
-        </div>
+<body class="bg-light">
 
-        <div class="calendar">
-            {% for weekday in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
-            <div class="weekday-header">{{ weekday }}</div>
-            {% endfor %}
-        </div>
+<div class="container py-4">
 
-        <div class="calendar">
-            {% for d in days %}
-            <div class="day" onclick="selectDay({{ d.day }})" id="day-{{ d.day }}">
-                <div>{{ d.day }}</div>
-                {% if lunches.get('%04d-%02d-%02d' % (year, month, d.day)) %}
-                <div class="lunch-label">
-                    {{ lunches['%04d-%02d-%02d' % (year, month, d.day)] }}
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
+    <div class="d-flex justify-content-between mb-3">
+        <a class="btn btn-outline-primary" href="{{ url_for('admin_summary', year=year, month=month) }}">🔍 Admin Page</a>
+        <div>
+            <a class="btn btn-primary" href="{{ url_for('calendar_view', username=username, year=prev_year, month=prev_month) }}">← Previous</a>
+            <a class="btn btn-primary" href="{{ url_for('calendar_view', username=username, year=next_year, month=next_month) }}">Next →</a>
         </div>
     </div>
 
-    <div class="side-panel" id="sidePanel">
-        <h3>Select a day</h3>
-        <p id="selectedDay">No day selected</p>
-        <select id="lunchOption">
+    <h2 class="text-center mb-4">{{ username }}’s Lunch Calendar — {{ month_name }} {{ year }}</h2>
+
+    <div class="row g-4">
+        <!-- Calendar -->
+        <div class="col-12 col-lg-8">
+
+            <div class="row fw-bold text-center mb-2">
+                {% for weekday in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+                <div class="col">{{ weekday }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="row g-2">
+                {% for d in days %}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day"
+                     id="day-{{ d.day }}"
+                     onclick="selectDay({{ d.day }})">
+                    <div class="p-2 border rounded text-center h-100">
+                        <div>{{ d.day }}</div>
+                        {% if lunches.get('%04d-%02d-%02d' % (year, month, d.day)) %}
+                        <div class="small text-muted">
+                            {{ lunches['%04d-%02d-%02d' % (year, month, d.day)] }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+
+        <!-- Side Panel -->
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4>Select a Day</h4>
+                    <p id="selectedDay">None selected</p>
+
+                    <select id="lunchOption" class="form-select mb-3">
+                        <option value="">-- Choose lunch --</option>
+                        {% for opt in options %}
+                        <option value="{{ opt }}">{{ opt }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button class="btn btn-success w-100 mb-2" onclick="saveLunch()">Save Lunch</button>
+                    <p id="statusMsg" class="text-center small"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+let selectedDay = null;
+const username = "{{ username }}";
+const year = {{ year }};
+const month = {{ month }};
+
+function selectDay(day) {
+    document.querySelectorAll('.calendar-day').forEach(el => el.classList.remove('bg-primary', 'text-white'));
+    const el = document.getElementById(`day-${day}`).firstElementChild;
+    el.classList.add('bg-primary', 'text-white');
+
+    selectedDay = day;
+    document.getElementById('selectedDay').innerText = "Day " + day;
+}
+
+async function saveLunch() {
+    const lunch = document.getElementById('lunchOption').value;
+    if (!selectedDay || !lunch) { alert("Select a day and a lunch option."); return; }
+
+    const response = await fetch("/save_lunch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, day: selectedDay, lunch, year, month })
+    });
+
+    const data = await response.json();
+    document.getElementById('statusMsg').innerText = data.message;
+
+    const box = document.querySelector(`#day-${selectedDay} .small`);
+    if (box) box.innerText = lunch;
+}
+</script>
+
+</body>
+</html>
+d="lunchOption">
             <option value="">-- Choose lunch --</option>
             {% for opt in options %}
             <option value="{{ opt }}">{{ opt }}</option>
