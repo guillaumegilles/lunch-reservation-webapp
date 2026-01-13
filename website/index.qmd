@@ -1,1 +1,6 @@
-# Documention
+---
+title: "Introduction"
+---
+
+La documentation de l'outil de réservation des repas est compilé dans
+ces pages.

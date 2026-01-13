@@ -4,12 +4,14 @@ project:
 
 
 book:
-  title: "Documentation"
+  title: "Outil de réservation des repas"
   author: "Guillaume Gilles"
   date: "2025-12-14"
+  repo-url: https://github.com/jjallaire/hopr/
+  repo-actions: [edit, source, issue]
+  downloads: [pdf]
   chapters:
     - index.qmd
-    - intro.qmd
     - db.qmd
 
 format:
