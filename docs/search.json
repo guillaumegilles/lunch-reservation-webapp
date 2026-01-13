@@ -8,5 +8,15 @@
     "crumbs": [
       "<span class='chapter-number'>1</span>  <span class='chapter-title'>Documention</span>"
     ]
+  },
+  {
+    "objectID": "db.html",
+    "href": "db.html",
+    "title": "3  Base de Donées",
+    "section": "",
+    "text": "---\ntitle: Order example\n---\nerDiagram\n    CUSTOMER ||--o{ ORDER : places\n    ORDER ||--|{ LINE-ITEM : contains\n    CUSTOMER }|..|{ DELIVERY-ADDRESS : uses",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Base de Donées</span>"
+    ]
   }
 ]

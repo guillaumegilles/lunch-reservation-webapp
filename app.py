@@ -1,9 +1,45 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from calendar import monthrange, month_name
 from datetime import date
 import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import (
+    LoginManager,
+    UserMixin,
+    login_user,
+    logout_user,
+    current_user,
+    login_required,
+)
 
 app = Flask(__name__)
+app.secret_key = "dev-secret-for-local"  # change for production
+
+# Flask-Login setup
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+
+
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
+
+    def get_id(self):
+        return str(self.id)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id, username FROM users WHERE id = ?", (int(user_id),))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return User(row[0], row[1])
+    return None
 
 USERS = ["Alice", "Bob", "Charlie", "Diana"]
 LUNCH_OPTIONS = [
@@ -29,6 +65,25 @@ def init_db():
             UNIQUE(username, lunch_date)
         )
     """)
+    # users table for authentication
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            is_admin INTEGER DEFAULT 0
+        )
+    """)
+
+    # Seed default users if none exist
+    c.execute("SELECT COUNT(*) FROM users")
+    count = c.fetchone()[0]
+    if count == 0:
+        for u in USERS:
+            c.execute(
+                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                (u, generate_password_hash("password")),
+            )
     conn.commit()
     conn.close()
 
@@ -56,15 +111,81 @@ def get_user_lunches(username, year, month):
 
 @app.route("/")
 def index():
+    # If already logged in, redirect to calendar
+    if current_user.is_authenticated:
+        return redirect(url_for("calendar_view"))
     return render_template("index.html", users=USERS)
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if not username or not password:
+            flash("Veuillez renseigner le nom d'utilisateur et le mot de passe", "danger")
+            return render_template("login.html")
+
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
+        row = c.fetchone()
+        conn.close()
+
+        if row and check_password_hash(row[1], password):
+            user = User(row[0], username)
+            login_user(user)
+            flash(f"Connecté en tant que {username}", "success")
+            return redirect(url_for("calendar_view"))
+        flash("Identifiants invalides", "danger")
+    return render_template("login.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        confirm = request.form.get("confirm")
+
+        if not username or not password:
+            flash("Nom d'utilisateur et mot de passe requis", "danger")
+            return render_template("register.html")
+        if password != confirm:
+            flash("Les mots de passe ne correspondent pas", "danger")
+            return render_template("register.html")
+
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT id FROM users WHERE username = ?", (username,))
+        if c.fetchone():
+            flash("Le nom d'utilisateur existe déjà", "danger")
+            conn.close()
+            return render_template("register.html")
+
+        c.execute(
+            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+            (username, generate_password_hash(password)),
+        )
+        conn.commit()
+        conn.close()
+        flash("Compte créé. Vous pouvez vous connecter.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("register.html")
+
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    return redirect(url_for("index"))
+
+
 @app.route("/calendar", methods=["POST", "GET"])
+@login_required
 def calendar_view():
-    # Support both POST (from form) and GET (for month navigation)
-    username = request.values.get("username")
-    if not username:
-        return redirect(url_for("index"))
+    # Show calendar for the logged-in user (ignore arbitrary username posts)
+    username = current_user.username
 
     # Determine which month to show
     today = date.today()
@@ -105,9 +226,11 @@ def calendar_view():
 
 
 @app.route("/save_lunch", methods=["POST"])
+@login_required
 def save_lunch():
     data = request.json
-    username = data.get("username")
+    # only allow saving for the logged-in user
+    username = current_user.username
     day = int(data.get("day"))
     lunch = data.get("lunch")
     year = int(data.get("year"))
@@ -137,6 +260,7 @@ def save_lunch():
 
 
 @app.route("/admin")
+@login_required
 def admin_summary():
     year = int(request.args.get("year", date.today().year))
     month = int(request.args.get("month", date.today().month))
