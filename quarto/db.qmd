@@ -1,0 +1,15 @@
+---
+title: "Base de Donées"
+date-modified: 2026-01-09
+---
+
+```{mermaid}
+---
+title: Order example
+---
+erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ LINE-ITEM : contains
+    CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
+
+```

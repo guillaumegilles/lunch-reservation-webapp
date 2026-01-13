@@ -10,8 +10,7 @@ book:
   chapters:
     - index.qmd
     - intro.qmd
-
-#bibliography: references.bib
+    - db.qmd
 
 format:
   html:
