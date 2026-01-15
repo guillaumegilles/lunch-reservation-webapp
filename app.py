@@ -22,9 +22,10 @@ login_manager.login_view = "login"
 
 
 class User(UserMixin):
-    def __init__(self, id, username):
+    def __init__(self, id, username, is_admin=0):
         self.id = id
         self.username = username
+        self.is_admin = is_admin
 
     def get_id(self):
         return str(self.id)
@@ -34,14 +35,22 @@ class User(UserMixin):
 def load_user(user_id):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT id, username FROM users WHERE id = ?", (int(user_id),))
+    c.execute("SELECT id, username, is_admin FROM users WHERE id = ?", (int(user_id)))
     row = c.fetchone()
-    conn.close()
     if row:
-        return User(row[0], row[1])
+        return User(row[0], row[1], row[2])
     return None
 
-USERS = ["Alice", "Bob", "Charlie", "Diana"]
+
+def get_all_users():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT username FROM users")
+    users = [row[0] for row in c.fetchall()]
+    conn.close()
+    return users
+
+
 LUNCH_OPTIONS = [
     "🥗 Plat du jour",
     "🐟 Poisson",
@@ -123,7 +132,9 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
         if not username or not password:
-            flash("Veuillez renseigner le nom d'utilisateur et le mot de passe", "danger")
+            flash(
+                "Veuillez renseigner le nom d'utilisateur et le mot de passe", "danger"
+            )
             return render_template("login.html")
 
         conn = sqlite3.connect(DB_FILE)
@@ -229,19 +240,25 @@ def calendar_view():
 @login_required
 def save_lunch():
     data = request.json
-    # only allow saving for the logged-in user
     username = current_user.username
-    day = int(data.get("day"))
-    lunch = data.get("lunch")
-    year = int(data.get("year"))
-    month = int(data.get("month"))
 
-    lunch_date = date(year, month, day).isoformat()
+    day = int(data.get("day"))
+    month = int(data.get("month"))
+    year = int(data.get("year"))
+    lunch = data.get("lunch")
+
+    lunch_date = date(year, month, day)
+    today = date.today()
+
+    # Block past dates
+    if lunch_date < today:
+        return jsonify(
+            {"status": "error", "message": "Impossible de modifier un déjeuner passé."}
+        ), 400
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
-    # INSERT OR REPLACE ensures the lunch_choice is saved/updated
     c.execute(
         """
         INSERT OR REPLACE INTO lunches (id, username, lunch_date, lunch_choice)
@@ -249,19 +266,22 @@ def save_lunch():
             COALESCE((SELECT id FROM lunches WHERE username=? AND lunch_date=?), NULL),
             ?, ?, ?
         )
-    """,
-        (username, lunch_date, username, lunch_date, lunch),
+        """,
+        (username, lunch_date.isoformat(), username, lunch_date.isoformat(), lunch),
     )
 
     conn.commit()
     conn.close()
 
-    return jsonify({"status": "success", "message": f"Saved {lunch} for {lunch_date}"})
+    return jsonify({"status": "success"})
 
 
 @app.route("/admin")
 @login_required
 def admin_summary():
+    if not current_user.is_admin:
+        flash("Accés réservé aux personnels du CSE")
+        return redirect(url_for("calendar_view"))
     year = int(request.args.get("year", date.today().year))
     month = int(request.args.get("month", date.today().month))
 
@@ -280,7 +300,6 @@ def admin_summary():
     conn.close()
 
     # Build a mapping: { username: { day: lunch_choice } }
-    data = {user: {} for user in USERS}
     for username, lunch_date, lunch_choice in rows:
         day = int(lunch_date.split("-")[2])
         data.setdefault(username, {})[day] = lunch_choice
@@ -298,7 +317,6 @@ def admin_summary():
 
     return render_template(
         "admin.html",
-        users=USERS,
         data=data,
         days=days,
         year=year,
