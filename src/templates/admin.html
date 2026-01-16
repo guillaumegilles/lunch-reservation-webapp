@@ -11,12 +11,12 @@
 <div class="container py-4">
 
     <div class="d-flex justify-content-between mb-3">
-        <a class="btn btn-primary" href="{{ url_for('admin_summary', year=prev_year, month=prev_month) }}">← Previous</a>
+        <a class="btn btn-primary" href="{{ url_for('views.admin_summary', year=prev_year, month=prev_month) }}">← Previous</a>
         <h3>Admin Summary — {{ month_name }} {{ year }}</h3>
-        <a class="btn btn-primary" href="{{ url_for('admin_summary', year=next_year, month=next_month) }}">Next →</a>
+        <a class="btn btn-primary" href="{{ url_for('views.admin_summary', year=next_year, month=next_month) }}">Next →</a>
     </div>
 
-    <a class="btn btn-outline-secondary mb-3" href="{{ url_for('index') }}">🏠 Back</a>
+    <a class="btn btn-outline-secondary mb-3" href="{{ url_for('views.index') }}">🏠 Back</a>
 
     <!-- Responsive Table -->
     <div class="table-responsive">

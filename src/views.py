@@ -138,6 +138,9 @@ def admin_summary():
         day = int(lunch_date.split("-")[2])
         data.setdefault(username, {})[day] = lunch_choice
 
+    # Get list of all users
+    users = list(data.keys())
+
     num_days = monthrange(year, month)[1]
     days = list(range(1, num_days + 1))
 
@@ -152,6 +155,7 @@ def admin_summary():
     return render_template(
         "admin.html",
         data=data,
+        users=users,
         days=days,
         year=year,
         month=month,
