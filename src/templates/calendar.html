@@ -12,10 +12,10 @@
 <div class="container py-4">
 
     <div class="d-flex justify-content-between mb-3">
-        <a class="btn btn-outline-primary" href="{{ url_for('admin_summary', year=year, month=month) }}">🔍 Admin Page</a>
+        <a class="btn btn-outline-primary" href="{{ url_for('views.admin_summary', year=year, month=month) }}">🔍 Admin Page</a>
         <div>
-            <a class="btn btn-primary" href="{{ url_for('calendar_view', username=username, year=prev_year, month=prev_month) }}">← Previous</a>
-            <a class="btn btn-primary" href="{{ url_for('calendar_view', username=username, year=next_year, month=next_month) }}">Next →</a>
+            <a class="btn btn-primary" href="{{ url_for('views.calendar_view', year=prev_year, month=prev_month) }}">← Previous</a>
+            <a class="btn btn-primary" href="{{ url_for('views.calendar_view', year=next_year, month=next_month) }}">Next →</a>
         </div>
     </div>
 
