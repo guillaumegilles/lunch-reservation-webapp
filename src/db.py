@@ -1,8 +1,9 @@
 import sqlite3
-from datetime import datetime
+from calendar import monthrange
 
 import click
 from flask import current_app, g
+from werkzeug.security import generate_password_hash
 
 
 def get_db():
@@ -28,6 +29,18 @@ def init_db():
     with current_app.open_resource("schema.sql") as f:
         db.executescript(f.read().decode("utf8"))
 
+    # Seed default admin user if no users exist
+    c = db.cursor()
+    c.execute("SELECT COUNT(*) FROM users")
+    count = c.fetchone()[0]
+    if count == 0:
+        # Create a default admin user (password: "password")
+        c.execute(
+            "INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)",
+            ("admin", generate_password_hash("password"), 1),
+        )
+        db.commit()
+
 
 @click.command("init-db")
 def init_db_command():
@@ -36,7 +49,22 @@ def init_db_command():
     click.echo("Initialized the database.")
 
 
-sqlite3.register_converter("timestamp", lambda v: datetime.fromisoformat(v.decode()))
+def get_user_lunches(username, year, month):
+    """Get all lunches for a user in a given month."""
+    db = get_db()
+    start = f"{year}-{month:02d}-01"
+    end = f"{year}-{month:02d}-{monthrange(year, month)[1]}"
+    
+    rows = db.execute(
+        """
+        SELECT lunch_date, lunch_choice
+        FROM lunches
+        WHERE username = ? AND lunch_date BETWEEN ? AND ?
+        """,
+        (username, start, end),
+    ).fetchall()
+    
+    return {row["lunch_date"]: row["lunch_choice"] for row in rows}
 
 
 def init_app(app):

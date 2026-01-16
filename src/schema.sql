@@ -1,18 +1,18 @@
-DROP TABLE IF EXISTS user;
-DROP TABLE IF EXISTS post;
+DROP TABLE IF EXISTS lunches;
+DROP TABLE IF EXISTS users;
 
-CREATE TABLE user (
+CREATE TABLE users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL
+  password_hash TEXT NOT NULL,
+  is_admin INTEGER DEFAULT 0
 );
 
-CREATE TABLE post (
+CREATE TABLE lunches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  author_id INTEGER NOT NULL,
-  created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  title TEXT NOT NULL,
-  body TEXT NOT NULL,
-  FOREIGN KEY (author_id) REFERENCES user (id)
+  username TEXT NOT NULL,
+  lunch_date TEXT NOT NULL,
+  lunch_choice TEXT,
+  UNIQUE(username, lunch_date)
 );
 

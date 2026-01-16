@@ -1,9 +1,10 @@
 from flask_login import LoginManager, UserMixin
 
+from .db import get_db
+
 # Flask-Login setup
 login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "login"
+login_manager.login_view = "auth.login"
 
 
 class User(UserMixin):
@@ -18,10 +19,14 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT id, username, is_admin FROM users WHERE id = ?", (int(user_id)))
-    row = c.fetchone()
+    db = get_db()
+    row = db.execute(
+        "SELECT id, username, is_admin FROM users WHERE id = ?", (int(user_id),)
+    ).fetchone()
     if row:
-        return User(row[0], row[1], row[2])
+        return User(row["id"], row["username"], row["is_admin"])
     return None
+
+
+def init_app(app):
+    login_manager.init_app(app)
