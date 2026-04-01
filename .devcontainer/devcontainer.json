@@ -1,18 +1,18 @@
 {
-  "name": "Lunch Reservation",
+  "name": "Lunch Codespace",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
 
   "waitFor": "onCreateCommand",
-  "updateContentCommand": "pip install -r requirements.txt",
-  "postCreateCommand": "python manage.py migrate && python manage.py init_db",
+  "updateContentCommand": "python3 -m pip install -r requirements.txt",
+  "postCreateCommand": "python3 manage.py migrate && python3 manage.py init_db",
   "postAttachCommand": {
-    "server": "python manage.py runserver 0.0.0.0:8000"
+    "server": "python3 manage.py runserver 0.0.0.0:8000"
   },
 
   "portsAttributes": {
     "8000": {
-      "label": "Django App",
-      "onAutoForward": "openPreview"
+      "label": "Lunch App",
+      "onAutoForward": "openBrowser"
     }
   },
 

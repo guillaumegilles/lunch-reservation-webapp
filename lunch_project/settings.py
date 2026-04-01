@@ -39,7 +39,7 @@ ROOT_URLCONF = "lunch_project.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -57,11 +57,17 @@ WSGI_APPLICATION = "lunch_project.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "instance" / "lunch.db",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
 STATIC_URL = "/static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+LANGUAGE_CODE = "fr-fr"
+TIME_ZONE = "Europe/Paris"
+USE_I18N = True
+USE_TZ = True
 
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/calendar/"

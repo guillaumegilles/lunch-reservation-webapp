@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Summary - Lunch Reservation{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+    <a class="btn btn-primary" href="{% url 'admin_summary' %}?year={{ prev_year }}&month={{ prev_month }}">&larr; Previous</a>
+    <h3>Admin Summary - {{ month_name }} {{ year }}</h3>
+    <a class="btn btn-primary" href="{% url 'admin_summary' %}?year={{ next_year }}&month={{ next_month }}">Next &rarr;</a>
+</div>
+
+<a class="btn btn-outline-secondary mb-3" href="{% url 'calendar' %}">Back</a>
+
+<div class="table-responsive">
+    <table class="table table-bordered table-striped">
+        <thead class="table-light">
+            <tr>
+                <th>User</th>
+                {% for d in days %}
+                <th>{{ d }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in table_rows %}
+            <tr>
+                <th>{{ row.username }}</th>
+                {% for choice in row.choices %}
+                <td>{{ choice }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
