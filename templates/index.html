@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Accueil - Lunch Reservation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-body text-center">
+                <h3 class="mb-4">Reservation des repas</h3>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-primary" href="{% url 'login' %}">Se connecter</a>
+                    <a class="btn btn-outline-secondary" href="{% url 'register' %}">Creer un compte</a>
+                </div>
+                {% if users %}
+                <hr>
+                <p class="small text-muted mb-2">Utilisateurs inscrits</p>
+                <div class="small">
+                    {% for username in users %}
+                        {{ username }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

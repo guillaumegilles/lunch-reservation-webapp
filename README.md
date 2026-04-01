@@ -1,55 +1,125 @@
-# Lunch Reservation WebApp
+# Lunch Reservation WebApp (Django)
 
-## Setup
+Application web simple pour reserver les repas du midi.
 
-1. Clone the repository
-   ```bash
-   git clone <repo-url>
-   cd lunch-reservation-webapp
-   ```
+Ce guide est ecrit pour un utilisateur debutant.
 
-2. Create and activate virtual environment
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
+## 1) Prerequis
 
-3. Install dependencies
-   ```bash
-   pip install -r requirements.txt
-   ```
+Avant de commencer, installe:
 
-4. Initialize the database
-   ```bash
-   flask --app src init-db
-   ```
+- Python 3.11+
+- pip
+- git
 
-5. Run the application
-   ```bash
-   flask --app src run --debug
-   ```
-   
-   Or using Python directly:
-   ```bash
-   python app.py
-   ```
+Verifie dans un terminal:
 
-You will see output like:
 ```bash
-* Serving Flask app "src"
-* Debug mode: on
-* Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
-* Restarting with stat
-* Debugger is active!
-* Debugger PIN: nnn-nnn-nnn
+python3 --version
+pip3 --version
+git --version
 ```
 
-Visit <http://127.0.0.1:5000/> in a browser to access the application.
+## 2) Recuperer le projet
 
-## Default Credentials
+```bash
+git clone <repo-url>
+cd lunch-reservation-webapp
+```
 
-After initializing the database, a default admin user is created:
-- Username: `admin`
-- Password: `password`
+## 3) Installer les dependances
 
-You can also register new users through the registration page.
+```bash
+pip3 install -r requirements.txt
+```
+
+Si cette commande echoue, regarde la section "Depannage" plus bas.
+
+## 4) Initialiser la base de donnees
+
+Cette etape cree les tables necessaires dans SQLite.
+
+```bash
+python3 manage.py migrate
+```
+
+## 5) Creer l'utilisateur admin par defaut
+
+```bash
+python3 manage.py init_db
+```
+
+## 6) Lancer le serveur
+
+```bash
+python3 manage.py runserver 0.0.0.0:8000
+```
+
+Puis ouvre ton navigateur sur:
+
+- http://127.0.0.1:8000/
+
+Pour arreter le serveur dans le terminal: `Ctrl + C`
+
+## 7) Connexion admin
+
+Compte admin cree par `init_db`:
+
+- Username: admin
+- Password: password
+
+Tu peux aussi creer un compte depuis la page d'inscription.
+
+## Commandes utiles
+
+Relancer les migrations:
+
+```bash
+python3 manage.py migrate
+```
+
+Lancer les tests:
+
+```bash
+python3 manage.py test
+```
+
+## Depannage (erreurs frequentes)
+
+### Erreur: "python: can't open file 'manage.py'"
+
+Tu n'es probablement pas dans le bon dossier.
+
+```bash
+cd lunch-reservation-webapp
+ls
+```
+
+Tu dois voir le fichier `manage.py` dans la liste.
+
+### Erreur: "No module named django"
+
+Django n'est pas installe dans l'environnement Python actif.
+
+```bash
+pip3 install -r requirements.txt
+python3 manage.py runserver 0.0.0.0:8000
+```
+
+### Erreur de conflit entre `python3` et `pip3`
+
+Sur certaines machines, `python3` et `pip3` ne pointent pas vers la meme version de Python.
+
+Verifie:
+
+```bash
+python3 -c "import sys; print(sys.executable)"
+pip3 --version
+```
+
+Si besoin, utilise:
+
+```bash
+python3 -m pip install -r requirements.txt
+python3 manage.py runserver 0.0.0.0:8000
+```
