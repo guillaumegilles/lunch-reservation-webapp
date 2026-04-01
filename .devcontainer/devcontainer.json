@@ -1,45 +1,39 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/universal:2",
-  "hostRequirements": {
-    "cpus": 4
-  },
-  
-  "features": {
-    "ghcr.io/rocker-org/devcontainer-features/quarto-cli:1": {
-      "version": "latest"
-      }
-  },
-  
+  "name": "Lunch Reservation",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+
   "waitFor": "onCreateCommand",
   "updateContentCommand": "pip install -r requirements.txt",
-  "postCreateCommand": "",
+  "postCreateCommand": "python manage.py migrate && python manage.py init_db",
   "postAttachCommand": {
-    "server": "flask --debug run"
+    "server": "python manage.py runserver 0.0.0.0:8000"
   },
-  
+
   "portsAttributes": {
-    "5000": {
-      "label": "Application",
+    "8000": {
+      "label": "Django App",
       "onAutoForward": "openPreview"
     }
   },
-  
+
   "customizations": {
     "codespaces": {
       "openFiles": [
-        "templates/index.html"
+        "reservations/views.py"
       ]
     },
-    
     "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python"
+      },
       "extensions": [
         "ms-python.python",
-        "quarto.quarto",
-        "ms-toolsai.jupyter",
-        "qwtel.sqlite-viewer"
+        "batisteo.vscode-django",
+        "qwtel.sqlite-viewer",
+        "GitHub.copilot"
       ]
     }
   },
-  
-  "forwardPorts": [5000]
+
+  "forwardPorts": [8000]
 }
