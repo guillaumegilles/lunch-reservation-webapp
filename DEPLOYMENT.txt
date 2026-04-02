@@ -1,0 +1,273 @@
+========================================================
+  GUIDE DE DÉPLOIEMENT EN PRODUCTION - LUNCH RESERVATION
+========================================================
+Ce guide explique comment déployer l'application sur un
+serveur Linux (Ubuntu/Debian) avec Gunicorn + Nginx.
+Niveau : débutant.
+
+--------------------------------------------------------
+ÉTAPE 1 — PRÉPARER LE SERVEUR
+--------------------------------------------------------
+Connectez-vous à votre serveur en SSH et mettez à jour :
+
+    sudo apt update && sudo apt upgrade -y
+
+Installez Python 3, pip, et les outils nécessaires :
+
+    sudo apt install python3 python3-pip python3-venv nginx git -y
+
+
+--------------------------------------------------------
+ÉTAPE 2 — COPIER LE CODE SUR LE SERVEUR
+--------------------------------------------------------
+Clonez (ou copiez) le projet dans /home/votreuser/lunch :
+
+    git clone <URL_DU_REPO> /home/votreuser/lunch
+    cd /home/votreuser/lunch
+
+Si vous n'utilisez pas Git, vous pouvez copier les fichiers
+via scp depuis votre machine locale :
+
+    scp -r /chemin/local/lunch-reservation votreuser@ip_serveur:/home/votreuser/lunch
+
+
+--------------------------------------------------------
+ÉTAPE 3 — CRÉER UN ENVIRONNEMENT VIRTUEL
+--------------------------------------------------------
+Un environnement virtuel isole les dépendances Python du projet.
+
+    cd /home/votreuser/lunch
+    python3 -m venv venv
+    source venv/bin/activate          # active l'environnement
+
+Installez les dépendances :
+
+    pip install -r requirements.txt
+    pip install gunicorn              # serveur WSGI pour la production
+
+
+--------------------------------------------------------
+ÉTAPE 4 — CONFIGURER LES VARIABLES D'ENVIRONNEMENT
+--------------------------------------------------------
+En production, il ne faut PAS utiliser la clé secrète par défaut
+et il faut désactiver le mode debug.
+
+Créez un fichier .env dans le dossier du projet :
+
+    nano /home/votreuser/lunch/.env
+
+Contenu du fichier .env :
+
+    SECRET_KEY=une-longue-chaine-aleatoire-difficile-a-deviner
+    DEBUG=False
+
+Pour générer une SECRET_KEY solide, exécutez :
+
+    python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+
+Copiez le résultat et collez-le dans SECRET_KEY.
+
+Pour que Django charge ce fichier .env, installez python-dotenv :
+
+    pip install python-dotenv
+
+Puis ajoutez ces deux lignes au tout début de
+lunch_project/settings.py (avant les autres imports) :
+
+    from dotenv import load_dotenv
+    load_dotenv()
+
+Vérification : les lignes suivantes sont déjà dans settings.py
+et liront automatiquement vos variables d'environnement :
+
+    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-for-local")
+    DEBUG = os.environ.get("DEBUG", "True") == "True"
+
+
+--------------------------------------------------------
+ÉTAPE 5 — CONFIGURER ALLOWED_HOSTS
+--------------------------------------------------------
+Dans lunch_project/settings.py, remplacez :
+
+    ALLOWED_HOSTS = ["*"]
+
+par votre vrai domaine ou adresse IP :
+
+    ALLOWED_HOSTS = ["mondomaine.com", "www.mondomaine.com"]
+    # ou si vous n'avez pas de domaine :
+    ALLOWED_HOSTS = ["123.45.67.89"]   # votre IP serveur
+
+Ajoutez aussi votre domaine dans CSRF_TRUSTED_ORIGINS :
+
+    CSRF_TRUSTED_ORIGINS = [
+        "https://mondomaine.com",
+        "https://www.mondomaine.com",
+    ]
+
+
+--------------------------------------------------------
+ÉTAPE 6 — CONFIGURER LES FICHIERS STATIQUES
+--------------------------------------------------------
+Ajoutez cette ligne dans lunch_project/settings.py :
+
+    STATIC_ROOT = BASE_DIR / "staticfiles"
+
+Puis collectez les fichiers statiques (CSS, JS, images) :
+
+    python manage.py collectstatic --no-input
+
+Cela copie tous les fichiers statiques dans le dossier staticfiles/.
+Nginx les servira directement (plus rapide que Django).
+
+
+--------------------------------------------------------
+ÉTAPE 7 — INITIALISER LA BASE DE DONNÉES
+--------------------------------------------------------
+Appliquez les migrations et créez l'utilisateur admin :
+
+    python manage.py migrate
+    python manage.py init_db
+
+L'utilisateur admin est créé avec :
+    login    : admin
+    mot de passe : password
+
+⚠️  CHANGEZ CE MOT DE PASSE IMMÉDIATEMENT après la première connexion
+via l'interface /django-admin/ ou avec :
+
+    python manage.py shell -c "
+    from django.contrib.auth.models import User
+    u = User.objects.get(username='admin')
+    u.set_password('VotreNouveauMotDePasse')
+    u.save()
+    "
+
+
+--------------------------------------------------------
+ÉTAPE 8 — TESTER GUNICORN
+--------------------------------------------------------
+Gunicorn est le serveur qui fait tourner Django en production.
+Testez qu'il démarre correctement :
+
+    gunicorn --bind 0.0.0.0:8000 lunch_project.wsgi:application
+
+Ouvrez http://ip_serveur:8000 dans votre navigateur pour vérifier.
+Arrêtez-le avec Ctrl+C quand c'est bon.
+
+
+--------------------------------------------------------
+ÉTAPE 9 — CONFIGURER GUNICORN COMME SERVICE SYSTÈME
+--------------------------------------------------------
+Créez un fichier de service systemd pour que Gunicorn
+démarre automatiquement et redémarre en cas de crash.
+
+    sudo nano /etc/systemd/system/lunch.service
+
+Contenu du fichier (adaptez les chemins) :
+
+    [Unit]
+    Description=Gunicorn pour Lunch Reservation
+    After=network.target
+
+    [Service]
+    User=votreuser
+    Group=www-data
+    WorkingDirectory=/home/votreuser/lunch
+    EnvironmentFile=/home/votreuser/lunch/.env
+    ExecStart=/home/votreuser/lunch/venv/bin/gunicorn \
+              --workers 3 \
+              --bind unix:/home/votreuser/lunch/lunch.sock \
+              lunch_project.wsgi:application
+
+    [Install]
+    WantedBy=multi-user.target
+
+Activez et démarrez le service :
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable lunch
+    sudo systemctl start lunch
+
+Vérifiez qu'il tourne :
+
+    sudo systemctl status lunch
+
+
+--------------------------------------------------------
+ÉTAPE 10 — CONFIGURER NGINX
+--------------------------------------------------------
+Nginx reçoit les requêtes HTTP/HTTPS et les transmet à Gunicorn.
+Il sert aussi les fichiers statiques directement.
+
+Créez un fichier de configuration Nginx :
+
+    sudo nano /etc/nginx/sites-available/lunch
+
+Contenu (adaptez mondomaine.com et les chemins) :
+
+    server {
+        listen 80;
+        server_name mondomaine.com www.mondomaine.com;
+
+        location = /favicon.ico { access_log off; log_not_found off; }
+
+        location /static/ {
+            root /home/votreuser/lunch/staticfiles;
+        }
+
+        location / {
+            include proxy_params;
+            proxy_pass http://unix:/home/votreuser/lunch/lunch.sock;
+        }
+    }
+
+Activez la configuration et redémarrez Nginx :
+
+    sudo ln -s /etc/nginx/sites-available/lunch /etc/nginx/sites-enabled/
+    sudo nginx -t                  # vérifie la syntaxe
+    sudo systemctl restart nginx
+
+
+--------------------------------------------------------
+ÉTAPE 11 — (OPTIONNEL) ACTIVER HTTPS AVEC CERTBOT
+--------------------------------------------------------
+HTTPS est fortement recommandé en production.
+Installez Certbot et obtenez un certificat gratuit (Let's Encrypt) :
+
+    sudo apt install certbot python3-certbot-nginx -y
+    sudo certbot --nginx -d mondomaine.com -d www.mondomaine.com
+
+Certbot modifie automatiquement la config Nginx pour HTTPS
+et renouvelle le certificat tous les 90 jours.
+
+
+--------------------------------------------------------
+RÉSUMÉ DES COMMANDES EN CAS DE PROBLÈME
+--------------------------------------------------------
+
+Voir les logs de l'application :
+    sudo journalctl -u lunch -n 50
+
+Voir les logs Nginx :
+    sudo tail -f /var/log/nginx/error.log
+
+Redémarrer l'application après une mise à jour du code :
+    sudo systemctl restart lunch
+
+Appliquer des migrations après un changement de modèle :
+    source venv/bin/activate
+    python manage.py migrate
+    sudo systemctl restart lunch
+
+
+--------------------------------------------------------
+BASE DE DONNÉES
+--------------------------------------------------------
+La base de données SQLite est dans instance/lunch.db.
+Pour une utilisation avec plus de 10-20 utilisateurs simultanés,
+envisagez de migrer vers PostgreSQL.
+
+Pour sauvegarder la base de données :
+    cp /home/votreuser/lunch/instance/lunch.db /sauvegarde/lunch_$(date +%Y%m%d).db
+
+========================================================

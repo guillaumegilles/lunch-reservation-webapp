@@ -70,6 +70,63 @@ Compte admin cree par `init_db`:
 
 Tu peux aussi creer un compte depuis la page d'inscription.
 
+## Fonctionnement de l'application
+
+Les employes se connectent, choisissent leur repas sur un calendrier mensuel, et peuvent modifier leurs reservations jusqu'au jour meme. Les membres du personnel (CSE) ont acces a un recapitulatif mensuel de toutes les reservations.
+
+**Roles utilisateurs**
+- Utilisateur standard : consulte et modifie son propre calendrier.
+- Staff (`is_staff=True`) : acces supplementaire au recapitulatif mensuel de tous les employes.
+
+**Flux principal**
+1. L'utilisateur se connecte (ou cree un compte).
+2. Il arrive sur son calendrier mensuel et clique sur un jour pour choisir son repas parmi les options disponibles.
+3. La selection est sauvegardee en AJAX via `POST /save_lunch/` (JSON + CSRF token).
+4. Les dates passees sont verrouillees cote serveur.
+5. Le staff peut naviguer sur `/admin-summary/` pour voir le tableau recapitulatif mois par mois.
+
+## Organisation des fichiers
+
+```
+lunch-reservation/
+├── manage.py                        # Point d'entree Django
+├── requirements.txt                 # Dependances Python
+├── instance/
+│   └── lunch.db                     # Base de donnees SQLite (generee)
+│
+├── lunch_project/                   # Configuration du projet Django
+│   ├── settings.py
+│   ├── urls.py                      # URLs racine (inclut reservations.urls)
+│   ├── wsgi.py
+│   └── asgi.py
+│
+└── reservations/                    # Application principale
+    ├── models.py                    # Modele Lunch (user, lunch_date, lunch_choice)
+    ├── views.py                     # Toutes les vues + constante LUNCH_OPTIONS
+    ├── urls.py                      # Routes de l'app
+    ├── forms.py                     # LoginForm, RegisterForm
+    ├── admin.py                     # Enregistrement dans l'admin Django
+    ├── apps.py
+    │
+    ├── templates/reservations/      # Templates HTML
+    │   ├── base.html                # Layout de base
+    │   ├── index.html               # Page d'accueil
+    │   ├── login.html
+    │   ├── register.html
+    │   ├── calendar.html            # Calendrier mensuel (AJAX)
+    │   └── admin_summary.html       # Recapitulatif staff
+    │
+    ├── static/reservations/
+    │   └── style.css
+    │
+    ├── management/commands/
+    │   └── init_db.py               # Cree l'utilisateur admin par defaut
+    │
+    ├── migrations/                  # Migrations Django (generees)
+    └── tests/
+        └── test_views.py
+```
+
 ## Commandes utiles
 
 Relancer les migrations:
