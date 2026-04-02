@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <title>Calendrier de {{ username }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="{% static 'reservations/style.css' %}">
+</head>
+<body class="bg-light">
+
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between mb-3">
+        {% if request.user.is_staff %}
+        <a class="btn btn-outline-primary" href="{% url 'admin_summary' %}?year={{ year }}&month={{ month }}">🔍 Admin Page</a>
+        {% else %}
+        <span></span>
+        {% endif %}
+        <div>
+            <a class="btn btn-primary" href="{% url 'calendar' %}?year={{ prev_year }}&month={{ prev_month }}">← Previous</a>
+            <a class="btn btn-primary" href="{% url 'calendar' %}?year={{ next_year }}&month={{ next_month }}">Next →</a>
+        </div>
+        <a class="btn btn-outline-secondary" href="{% url 'logout' %}">Déconnexion</a>
+    </div>
+
+    <h2 class="text-center mb-4">{{ username }}'s Lunch Calendar — {{ month_name }} {{ year }}</h2>
+
+    <div class="row g-4">
+        <!-- Calendar -->
+        <div class="col-12 col-lg-8">
+
+            <div class="row fw-bold text-center mb-2">
+                {% for weekday in weekdays %}
+                <div class="col">{{ weekday }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="row g-2">
+                {% for d in days %}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day"
+                     id="day-{{ d.day }}"
+                     onclick="selectDay({{ d.day }})">
+                    <div class="p-2 border rounded text-center h-100">
+                        <div>{{ d.day }}</div>
+                        {% if d.lunch %}
+                        <div class="small text-muted">{{ d.lunch }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+
+        <!-- Side Panel -->
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4>Sélectionner un jour</h4>
+                    <p id="selectedDay">Aucun jour sélectionné</p>
+
+                    <select id="lunchOption" class="form-select mb-3">
+                        <option value="">-- Choisir un repas --</option>
+                        {% for opt in options %}
+                        <option value="{{ opt }}">{{ opt }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button class="btn btn-success w-100 mb-2" onclick="saveLunch()">Enregistrer</button>
+                    <p id="statusMsg" class="text-center small"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+let selectedDay = null;
+const year = {{ year }};
+const month = {{ month }};
+const csrfToken = "{{ csrf_token }}";
+
+function selectDay(day) {
+    document.querySelectorAll('.calendar-day').forEach(el => el.firstElementChild.classList.remove('bg-primary', 'text-white'));
+    document.getElementById(`day-${day}`).firstElementChild.classList.add('bg-primary', 'text-white');
+    selectedDay = day;
+    document.getElementById('selectedDay').innerText = "Jour " + day;
+}
+
+async function saveLunch() {
+    const lunch = document.getElementById('lunchOption').value;
+    if (!selectedDay || !lunch) { alert("Sélectionnez un jour et un repas."); return; }
+
+    const response = await fetch("{% url 'save_lunch' %}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+        body: JSON.stringify({ day: selectedDay, lunch, year, month })
+    });
+
+    const data = await response.json();
+    const msg = document.getElementById('statusMsg');
+    msg.innerText = data.status === 'success' ? '✓ Enregistré' : data.message;
+
+    if (data.status === 'success') {
+        const box = document.querySelector(`#day-${selectedDay} .small`);
+        if (box) {
+            box.innerText = lunch;
+        } else {
+            const small = document.createElement('div');
+            small.className = 'small text-muted';
+            small.innerText = lunch;
+            document.getElementById(`day-${selectedDay}`).firstElementChild.appendChild(small);
+        }
+    }
+}
+</script>
+
+</body>
+</html>
