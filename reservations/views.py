@@ -1,17 +1,18 @@
 import json
 from calendar import month_name, monthrange
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import JsonResponse
+from django.urls import reverse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-from .forms import LoginForm, RegisterForm
-from .models import Lunch
+from .forms import LoginForm, RegisterForm, WeeklyMenuForm
+from .models import DailyMenu, Lunch
 
 LUNCH_OPTIONS = [
     "🥗 Plat du jour",
@@ -19,6 +20,14 @@ LUNCH_OPTIONS = [
     "🥩 Steak haché",
     "🍳 Œufs brouillés",
 ]
+
+WEEKDAY_MENUS = {
+    0: "Lundi: 🥗 Plat du jour",
+    1: "Mardi: 🐟 Poisson",
+    2: "Mercredi: 🥩 Steak haché",
+    3: "Jeudi: 🍳 Œufs brouillés",
+    4: "Vendredi: 🍝 Pates",
+}
 
 
 def _month_navigation(year, month):
@@ -30,6 +39,12 @@ def _month_navigation(year, month):
     if next_month == 13:
         next_month, next_year = 1, year + 1
     return prev_year, prev_month, next_year, next_month
+
+
+def _menu_for_date(current_date, db_menus=None):
+    if db_menus and current_date.day in db_menus:
+        return db_menus[current_date.day]
+    return WEEKDAY_MENUS[current_date.weekday()]
 
 
 def index(request):
@@ -110,15 +125,23 @@ def calendar_view(request):
     )
     lunches_by_day = {l.lunch_date.day: l.lunch_choice for l in lunches_qs}
 
+    db_menus_qs = DailyMenu.objects.filter(date__year=year, date__month=month)
+    db_menus_by_day = {m.date.day: m.menu for m in db_menus_qs}
+
     num_days = monthrange(year, month)[1]
-    days = [
-        {
-            "day": d,
-            "weekday": date(year, month, d).strftime("%a"),
-            "lunch": lunches_by_day.get(d, ""),
-        }
-        for d in range(1, num_days + 1)
-    ]
+    days = []
+    for d in range(1, num_days + 1):
+        current_date = date(year, month, d)
+        if current_date.weekday() >= 5:
+            continue
+        days.append(
+            {
+                "day": d,
+                "weekday": current_date.strftime("%a"),
+                "menu": _menu_for_date(current_date, db_menus_by_day),
+                "lunch": lunches_by_day.get(d, ""),
+            }
+        )
 
     prev_year, prev_month, next_year, next_month = _month_navigation(year, month)
 
@@ -176,6 +199,45 @@ def admin_summary(request):
     year = int(request.GET.get("year", today.year))
     month = int(request.GET.get("month", today.month))
 
+    week_start = today - timedelta(days=today.weekday())
+    weekly_form = WeeklyMenuForm(
+        initial={
+            "week_start": week_start,
+            "monday_menu": "🥗 Plat du jour",
+            "tuesday_menu": "🐟 Poisson",
+            "wednesday_menu": "🥩 Steak haché",
+            "thursday_menu": "🍳 Oeufs brouillés",
+            "friday_menu": "🍝 Pates",
+        }
+    )
+
+    if request.method == "POST":
+        weekly_form = WeeklyMenuForm(request.POST)
+        if weekly_form.is_valid():
+            start = weekly_form.cleaned_data["week_start"]
+            if start.weekday() != 0:
+                weekly_form.add_error("week_start", "Veuillez choisir un lundi.")
+            else:
+                day_keys = [
+                    "monday_menu",
+                    "tuesday_menu",
+                    "wednesday_menu",
+                    "thursday_menu",
+                    "friday_menu",
+                ]
+                for index, key in enumerate(day_keys):
+                    DailyMenu.objects.update_or_create(
+                        date=start + timedelta(days=index),
+                        defaults={"menu": weekly_form.cleaned_data[key]},
+                    )
+
+                messages.success(request, "Menus hebdomadaires enregistres.")
+                summary_year = request.POST.get("summary_year")
+                summary_month = request.POST.get("summary_month")
+                if summary_year and summary_month:
+                    return redirect(f"{reverse('admin_summary')}?year={summary_year}&month={summary_month}")
+                return redirect(f"{reverse('admin_summary')}?year={start.year}&month={start.month}")
+
     rows = Lunch.objects.filter(lunch_date__year=year, lunch_date__month=month).select_related("user")
 
     data = {}
@@ -184,7 +246,7 @@ def admin_summary(request):
 
     users = sorted(data.keys())
     num_days = monthrange(year, month)[1]
-    days = list(range(1, num_days + 1))
+    days = [d for d in range(1, num_days + 1) if date(year, month, d).weekday() < 5]
     table_rows = [
         {
             "username": username,
@@ -208,5 +270,6 @@ def admin_summary(request):
             "next_month": next_month,
             "prev_year": prev_year,
             "next_year": next_year,
+            "weekly_menu_form": weekly_form,
         },
     )

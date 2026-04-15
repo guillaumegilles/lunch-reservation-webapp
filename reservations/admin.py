@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import Lunch
+from .models import DailyMenu, Lunch
+
+
+@admin.register(DailyMenu)
+class DailyMenuAdmin(admin.ModelAdmin):
+    list_display = ("date", "menu")
+    ordering = ("date",)
+    date_hierarchy = "date"
 
 
 @admin.register(Lunch)

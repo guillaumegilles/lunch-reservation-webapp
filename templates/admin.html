@@ -11,6 +11,31 @@
 
 <a class="btn btn-outline-secondary mb-3" href="{% url 'calendar' %}">Back</a>
 
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Ajouter les repas de la semaine</h5>
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            <input type="hidden" name="summary_year" value="{{ year }}">
+            <input type="hidden" name="summary_month" value="{{ month }}">
+
+            {% for field in weekly_menu_form %}
+            <div class="col-12 col-md-6">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-success">Enregistrer la semaine</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="table-responsive">
     <table class="table table-bordered table-striped">
         <thead class="table-light">

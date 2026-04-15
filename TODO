@@ -5,7 +5,7 @@
   - [Vercel](https://vercel.com/home)
   - https://www.heroku.com/
 2. 
-- [ ] Intégrer les menus pour chaque jours
+- [x] Intégrer les menus pour chaque jours
 - [ ] Ajouter la somme des repas quotidiennement dans la page admin
 - [ ] Proposé une rapide visualisation pour chaque option, histogramme
 - [ ] prévisionnel simple pour le mois suivant
