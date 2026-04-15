@@ -26,8 +26,6 @@
             <div class="col">Wed</div>
             <div class="col">Thu</div>
             <div class="col">Fri</div>
-            <div class="col">Sat</div>
-            <div class="col">Sun</div>
         </div>
 
         <div class="row g-2">
@@ -35,6 +33,7 @@
             <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" onclick="selectDay({{ d.day }})">
                 <div class="p-2 border rounded text-center h-100 selectable-day">
                     <div>{{ d.day }}</div>
+                    <div class="small">{{ d.menu }}</div>
                     {% if d.lunch %}
                     <div class="small text-muted lunch-label">{{ d.lunch }}</div>
                     {% endif %}

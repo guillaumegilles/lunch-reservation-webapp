@@ -2,6 +2,17 @@ from django.conf import settings
 from django.db import models
 
 
+class DailyMenu(models.Model):
+    date = models.DateField(unique=True)
+    menu = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ["date"]
+
+    def __str__(self):
+        return f"{self.date} - {self.menu}"
+
+
 class Lunch(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     lunch_date = models.DateField()
