@@ -263,11 +263,11 @@ Appliquer des migrations après un changement de modèle :
 --------------------------------------------------------
 BASE DE DONNÉES
 --------------------------------------------------------
-La base de données SQLite est dans instance/lunch.db.
+La base de données SQLite est dans db.sqlite3.
 Pour une utilisation avec plus de 10-20 utilisateurs simultanés,
 envisagez de migrer vers PostgreSQL.
 
 Pour sauvegarder la base de données :
-    cp /home/votreuser/lunch/instance/lunch.db /sauvegarde/lunch_$(date +%Y%m%d).db
+    cp /home/votreuser/lunch/db.sqlite3 /sauvegarde/lunch_$(date +%Y%m%d).db
 
 ========================================================

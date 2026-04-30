@@ -12,6 +12,7 @@ ALLOWED_HOSTS = ["*"]
 # Codespaces proxies requests through *.app.github.dev over HTTPS
 CSRF_TRUSTED_ORIGINS = [
     "https://*.app.github.dev",
+    "https://*.vercel.app",
 ]
 
 INSTALLED_APPS = [
@@ -39,7 +40,7 @@ ROOT_URLCONF = "lunch_project.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -54,15 +55,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "lunch_project.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if DATABASE_URL:
+    import dj_database_url
+    DATABASES = {
+        "default": dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 
 LANGUAGE_CODE = "fr-fr"
 TIME_ZONE = "Europe/Paris"

@@ -18,7 +18,7 @@
 
 <h2 class="text-center mb-4">{{ username }} - {{ month_name }} {{ year }}</h2>
 
-<div class="row g-4">
+{% comment %} <div class="row g-4">
     <div class="col-12 col-lg-8">
         <div class="row fw-bold text-center mb-2">
             <div class="col">Mon</div>
@@ -26,11 +26,11 @@
             <div class="col">Wed</div>
             <div class="col">Thu</div>
             <div class="col">Fri</div>
-        </div>
+        </div> {% endcomment %}
 
         <div class="row g-2">
             {% for d in days %}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" onclick="selectDay({{ d.day }})">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" onclick="selectDay({{ d.day }})">
                 <div class="p-2 border rounded text-center h-100 selectable-day">
                     <div>{{ d.day }}</div>
                     <div class="small">{{ d.menu }}</div>
@@ -46,17 +46,17 @@
     <div class="col-12 col-lg-4">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h4>Select a Day</h4>
-                <p id="selectedDay">None selected</p>
+                <h4>Selection du jour</h4>
+                <p id="selectedDay">Aucun jour selectionne</p>
 
                 <select id="lunchOption" class="form-select mb-3">
-                    <option value="">-- Choose lunch --</option>
+                    <option value="">-- Choisir un repas --</option>
                     {% for opt in options %}
                     <option value="{{ opt }}">{{ opt }}</option>
                     {% endfor %}
                 </select>
 
-                <button class="btn btn-success w-100 mb-2" onclick="saveLunch()">Save Lunch</button>
+                <button class="btn btn-success w-100 mb-2" onclick="saveLunch()">Enregistrer le repas</button>
                 <p id="statusMsg" class="text-center small"></p>
             </div>
         </div>
@@ -85,18 +85,41 @@ function getCookie(name) {
 
 function selectDay(day) {
     document.querySelectorAll('.selectable-day').forEach(el => el.classList.remove('bg-primary', 'text-white'));
-    const el = document.querySelector(`#day-${day} .selectable-day`);
+    const dayContainer = document.getElementById(`day-${day}`);
+    const el = dayContainer.querySelector('.selectable-day');
     el.classList.add('bg-primary', 'text-white');
 
     selectedDay = day;
-    document.getElementById('selectedDay').innerText = "Day " + day;
+    syncLunchOption(dayContainer.dataset.menu, dayContainer.dataset.lunch);
+    document.getElementById('selectedDay').innerText = "Jour " + day;
     document.getElementById('statusMsg').innerText = "";
+}
+
+function syncLunchOption(defaultMenu, existingLunch) {
+    const select = document.getElementById('lunchOption');
+
+    function ensureOption(value) {
+        if (!value) {
+            return;
+        }
+        const exists = Array.from(select.options).some(opt => opt.value === value);
+        if (!exists) {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = value;
+            select.appendChild(opt);
+        }
+    }
+
+    ensureOption(defaultMenu);
+    ensureOption(existingLunch);
+    select.value = existingLunch || defaultMenu || "";
 }
 
 async function saveLunch() {
     const lunch = document.getElementById('lunchOption').value;
     if (!selectedDay || !lunch) {
-        alert("Select a day and a lunch option.");
+        alert("Veuillez selectionner un jour et un repas.");
         return;
     }
 
