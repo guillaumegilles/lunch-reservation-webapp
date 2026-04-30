@@ -12,14 +12,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import LoginForm, RegisterForm, WeeklyMenuForm
-from .models import DailyMenu, Lunch
-
-LUNCH_OPTIONS = [
-    "🥗 Plat du jour",
-    "🐟 Poisson",
-    "🥩 Steak haché",
-    "🍳 Œufs brouillés",
-]
+from .models import DailyMenu, Lunch, MealOption
 
 WEEKDAY_MENUS = {
     0: "Lundi: 🥗 Plat du jour",
@@ -154,7 +147,7 @@ def calendar_view(request):
             "month": month,
             "month_name": month_name[month],
             "days": days,
-            "options": LUNCH_OPTIONS,
+            "options": list(MealOption.objects.filter(is_active=True).values_list("name", flat=True)),
             "prev_month": prev_month,
             "next_month": next_month,
             "prev_year": prev_year,

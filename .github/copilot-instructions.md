@@ -17,7 +17,7 @@ python manage.py init_db
 python manage.py runserver
 ```
 
-Production: set `SECRET_KEY` and `DEBUG=False` via environment variables. Database path is `instance/lunch.db` (SQLite).
+Production: set `SECRET_KEY` and `DEBUG=False` via environment variables. Database path is `db.sqlite3` (SQLite).
 
 ## Architecture
 
@@ -28,8 +28,8 @@ reservations/        # Single Django app with all business logic
   views.py           # All views: index, login, logout, register, calendar, save_lunch, admin_summary
   urls.py            # URL patterns for the reservations app
   admin.py           # Registers Lunch in Django admin (/django-admin/)
-  templates/reservations/   # All HTML templates
-  static/reservations/      # style.css
+  templates/                # All HTML templates
+  static/           # style.css
   management/commands/init_db.py  # Creates default admin user
   migrations/        # Django ORM migrations
 ```
@@ -51,9 +51,9 @@ python manage.py shell -c "from django.contrib.auth.models import User; User.obj
 - **Lunch options** are defined as `LUNCH_OPTIONS` list constant in `reservations/views.py`.
 - **Admin check** is `request.user.is_staff` in views; `{% if request.user.is_staff %}` in templates.
 - **Past date guard** — `save_lunch` rejects dates before today with a 400 JSON error (server-side only).
-- **`/save_lunch/`** is a JSON POST endpoint. The JS in `calendar.html` sends `X-CSRFToken` in the request header — required for all non-GET AJAX calls.
+- **`/save-lunch/`** is a JSON POST endpoint. The JS in `calendar.html` sends `X-CSRFToken` in the request header — required for all non-GET AJAX calls.
 - **Flash messages** use Django's `messages` framework (`messages.success/error(request, ...)`). Templates render them with `{% for message in messages %}`.
 - **UI and flash messages are in French.**
-- **Templates** live in `reservations/templates/reservations/` and must start with `{% load static %}` to use `{% static '...' %}`.
+- **Templates** live in `reservations/templates/` and are rendered directly by name (for example: `calendar.html`).
 - **Days context** — the calendar view passes `days` as a list of dicts `{day, weekday, lunch}` so templates can access the lunch choice without dict key formatting tricks.
 

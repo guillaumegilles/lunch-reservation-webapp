@@ -2,6 +2,18 @@ from django.conf import settings
 from django.db import models
 
 
+class MealOption(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
 class DailyMenu(models.Model):
     date = models.DateField(unique=True)
     menu = models.CharField(max_length=200)

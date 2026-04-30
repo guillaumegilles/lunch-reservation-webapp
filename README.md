@@ -81,7 +81,7 @@ Les employes se connectent, choisissent leur repas sur un calendrier mensuel, et
 **Flux principal**
 1. L'utilisateur se connecte (ou cree un compte).
 2. Il arrive sur son calendrier mensuel et clique sur un jour pour choisir son repas parmi les options disponibles.
-3. La selection est sauvegardee en AJAX via `POST /save_lunch/` (JSON + CSRF token).
+3. La selection est sauvegardee en AJAX via `POST /save-lunch/` (JSON + CSRF token).
 4. Les dates passees sont verrouillees cote serveur.
 5. Le staff peut naviguer sur `/admin-summary/` pour voir le tableau recapitulatif mois par mois.
 
@@ -91,8 +91,7 @@ Les employes se connectent, choisissent leur repas sur un calendrier mensuel, et
 lunch-reservation/
 ├── manage.py                        # Point d'entree Django
 ├── requirements.txt                 # Dependances Python
-├── instance/
-│   └── lunch.db                     # Base de donnees SQLite (generee)
+├── db.sqlite3                       # Base de donnees SQLite (generee)
 │
 ├── lunch_project/                   # Configuration du projet Django
 │   ├── settings.py
@@ -108,15 +107,15 @@ lunch-reservation/
     ├── admin.py                     # Enregistrement dans l'admin Django
     ├── apps.py
     │
-    ├── templates/reservations/      # Templates HTML
+    ├── templates/                   # Templates HTML
     │   ├── base.html                # Layout de base
     │   ├── index.html               # Page d'accueil
     │   ├── login.html
     │   ├── register.html
     │   ├── calendar.html            # Calendrier mensuel (AJAX)
-    │   └── admin_summary.html       # Recapitulatif staff
+    │   └── admin.html               # Recapitulatif staff
     │
-    ├── static/reservations/
+    ├── static/
     │   └── style.css
     │
     ├── management/commands/

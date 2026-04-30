@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import DailyMenu, Lunch
+from .models import DailyMenu, Lunch, MealOption
+
+
+@admin.register(MealOption)
+class MealOptionAdmin(admin.ModelAdmin):
+    list_display = ("name", "is_active", "order")
+    list_editable = ("is_active", "order")
+    ordering = ("order", "name")
 
 
 @admin.register(DailyMenu)
