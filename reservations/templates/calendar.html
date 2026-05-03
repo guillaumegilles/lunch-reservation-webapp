@@ -19,34 +19,24 @@
 
 <h2 class="text-center mb-4">{{ username }} - {{ month_name }} {{ year }}</h2>
 
-{% comment %} <div class="row g-4">
-    <div class="col-12 col-lg-8">
-        <div class="row fw-bold text-center mb-2">
-            <div class="col">Mon</div>
-            <div class="col">Tue</div>
-            <div class="col">Wed</div>
-            <div class="col">Thu</div>
-            <div class="col">Fri</div>
-        </div> {% endcomment %}
-
-        <div class="row g-2">
-            {% for d in days %}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" onclick="selectDay({{ d.day }})">
-                <div class="p-2 border rounded text-center h-100 selectable-day">
-                    <div>{{ d.day }}</div>
-                    <div class="small">{{ d.menu }}</div>
-                    {% if d.lunch %}
-                    <div class="small text-muted lunch-label">{{ d.lunch }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
+<div class="row g-2 mb-4">
+    {% for d in days %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" onclick="selectDay({{ d.day }})">
+        <div class="p-2 border rounded text-center h-100 selectable-day">
+            <div>{{ d.day }}</div>
+            <div class="small">{{ d.menu }}</div>
+            {% if d.lunch %}
+            <div class="small text-muted lunch-label">{{ d.lunch }}</div>
+            {% endif %}
         </div>
     </div>
+    {% endfor %}
+</div>
 
-    <div class="col-12 col-lg-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6 col-xl-4">
+        <div class="card shadow-sm calendar-selection-card">
+            <div class="card-body text-center">
                 <h4>Selection du jour</h4>
                 <p id="selectedDay">Aucun jour selectionne</p>
 
