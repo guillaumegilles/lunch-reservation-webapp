@@ -39,7 +39,7 @@ class WeeklyMenuForm(forms.Form):
 
 
 class SuggestionForm(forms.Form):
-    suggestion = forms.CharField(
+    text = forms.CharField(
         max_length=500,
         widget=forms.Textarea(attrs={"rows": 4, "class": "form-control"}),
         label="Votre suggestion ou amelioration",
