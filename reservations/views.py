@@ -1,5 +1,4 @@
 import json
-import re
 from calendar import month_name, monthrange
 from datetime import date, timedelta
 
@@ -7,6 +6,8 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.urls import reverse
 from django.shortcuts import redirect, render
@@ -49,53 +50,25 @@ def index(request):
     return render(request, "index.html", {"users": users})
 
 
-def _third_letter_identifier(last_name):
-    cleaned = (last_name or "").strip()
-    if len(cleaned) < 3:
-        return ""
-    return cleaned[2].lower()
-
-
-def _build_unique_username(first_name, last_name):
-    base = f"{first_name}.{last_name}".strip().lower()
-    base = re.sub(r"[^a-z0-9._-]+", "", base)
-    if not base:
-        base = "agent"
-
-    candidate = base
-    suffix = 2
-    while User.objects.filter(username=candidate).exists():
-        candidate = f"{base}{suffix}"
-        suffix += 1
-    return candidate
+def _normalize_identifier(value):
+    return (value or "").strip().upper()
 
 
 def login_view(request):
     if request.method == "POST":
         form = LoginForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Veuillez renseigner l'identifiant et le numero de badge")
+            messages.error(request, "Veuillez renseigner un identifiant valide et un mot de passe")
             return render(request, "login.html", {"form": form})
 
-        identifier = form.cleaned_data["identifier"].strip().lower()
-        badge_number = form.cleaned_data["badge_number"]
+        identifier = _normalize_identifier(form.cleaned_data["identifier"])
+        password = form.cleaned_data["password"]
 
-        candidates = []
-        for account in User.objects.exclude(last_name=""):
-            if _third_letter_identifier(account.last_name) != identifier:
-                continue
-            user = authenticate(request, username=account.username, password=badge_number)
-            if user is not None:
-                candidates.append(user)
-
-        if len(candidates) == 1:
-            login(request, candidates[0])
-            messages.success(request, f"Connecte en tant que {candidates[0].username}")
+        user = authenticate(request, username=identifier, password=password)
+        if user is not None:
+            login(request, user)
+            messages.success(request, f"Connecte en tant que {user.username}")
             return redirect("calendar")
-
-        if len(candidates) > 1:
-            messages.error(request, "Identifiant ambigu. Contactez le CSE.")
-            return render(request, "login.html", {"form": form})
 
         messages.error(request, "Identifiants invalides")
     else:
@@ -108,33 +81,37 @@ def register_view(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Nom, prenom et numero de badge requis")
+            messages.error(request, "Identifiant, nom, prenom et mot de passe requis")
             return render(request, "register.html", {"form": form})
 
+        identifier = _normalize_identifier(form.cleaned_data["identifier"])
         last_name = form.cleaned_data["last_name"].strip()
         first_name = form.cleaned_data["first_name"].strip()
-        badge_number = form.cleaned_data["badge_number"]
-        confirm_badge_number = form.cleaned_data["confirm_badge_number"]
+        password = form.cleaned_data["password"]
+        confirm_password = form.cleaned_data["confirm_password"]
 
-        if len(last_name) < 3:
-            messages.error(request, "Le nom de famille doit contenir au moins 3 lettres")
+        if password != confirm_password:
+            messages.error(request, "Les mots de passe ne correspondent pas")
             return render(request, "register.html", {"form": form})
 
-        if badge_number != confirm_badge_number:
-            messages.error(request, "Les numeros de badge ne correspondent pas")
+        if User.objects.filter(username=identifier).exists():
+            messages.error(request, "Cet identifiant existe deja")
             return render(request, "register.html", {"form": form})
 
-        username = _build_unique_username(first_name, last_name)
+        draft_user = User(username=identifier, first_name=first_name, last_name=last_name)
+        try:
+            validate_password(password, user=draft_user)
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+            return render(request, "register.html", {"form": form})
+
         User.objects.create_user(
-            username=username,
+            username=identifier,
             first_name=first_name,
             last_name=last_name,
-            password=badge_number,
+            password=password,
         )
-        messages.success(
-            request,
-            "Compte cree. Votre identifiant est la 3e lettre de votre nom de famille.",
-        )
+        messages.success(request, "Compte cree. Vous pouvez vous connecter.")
         return redirect("login")
     else:
         form = RegisterForm()
