@@ -124,6 +124,17 @@ def logout_view(request):
     logout(request)
     return redirect("index")
 
+@login_required
+def dashboard_view(request):
+    """Landing page after login with general information and navigation."""
+    context = {
+        'username': request.user.username,
+        'first_name': request.user.first_name,
+        'is_staff': request.user.is_staff,
+    }
+    return render(request, "dashboard.html", context)
+
+
 
 @login_required
 def calendar_view(request):
