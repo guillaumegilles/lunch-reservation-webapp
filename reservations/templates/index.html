@@ -16,7 +16,7 @@
                 <hr>
                 <p class="small text-muted mb-2">Utilisateurs inscrits</p>
                 <div class="small">
-                    {% for username in users %}
+                    {% for username in user %}
                         {{ username }}{% if not forloop.last %}, {% endif %}
                     {% endfor %}
                 </div>
