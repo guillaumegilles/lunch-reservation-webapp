@@ -93,7 +93,7 @@ lunch-reservation/
 ├── requirements.txt                 # Dependances Python
 ├── db.sqlite3                       # Base de donnees SQLite (generee)
 │
-├── lunch_project/                   # Configuration du projet Django
+├── django_project/                  # Configuration du projet Django
 │   ├── settings.py
 │   ├── urls.py                      # URLs racine (inclut reservations.urls)
 │   ├── wsgi.py

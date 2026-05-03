@@ -22,7 +22,7 @@ Production: set `SECRET_KEY` and `DEBUG=False` via environment variables. Databa
 ## Architecture
 
 ```
-lunch_project/       # Django project package (settings, root URLs, wsgi)
+django_project/      # Django project package (settings, root URLs, wsgi)
 reservations/        # Single Django app with all business logic
   models.py          # Lunch model (ForeignKey to built-in User)
   views.py           # All views: index, login, logout, register, calendar, save_lunch, admin_summary

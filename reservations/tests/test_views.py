@@ -13,40 +13,88 @@ class AuthFlowTests(TestCase):
         response = self.client.post(
             reverse("register"),
             {
-                "username": "alice",
-                "password": "secret123",
-                "confirm": "secret123",
+                "last_name": "Durand",
+                "first_name": "Alice",
+                "badge_number": "A12345",
+                "confirm_badge_number": "A12345",
             },
         )
 
         self.assertRedirects(response, reverse("login"))
-        self.assertTrue(User.objects.filter(username="alice").exists())
+        self.assertTrue(User.objects.filter(first_name="Alice", last_name="Durand").exists())
+
+        created_user = User.objects.get(first_name="Alice", last_name="Durand")
+        self.assertTrue(created_user.check_password("A12345"))
 
     def test_register_rejects_mismatched_password(self):
         response = self.client.post(
             reverse("register"),
             {
-                "username": "alice",
-                "password": "secret123",
-                "confirm": "different",
+                "last_name": "Durand",
+                "first_name": "Alice",
+                "badge_number": "A12345",
+                "confirm_badge_number": "DIFFERENT",
             },
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(username="alice").exists())
+        self.assertFalse(User.objects.filter(first_name="Alice", last_name="Durand").exists())
+
+    def test_register_rejects_last_name_shorter_than_3_letters(self):
+        response = self.client.post(
+            reverse("register"),
+            {
+                "last_name": "Li",
+                "first_name": "Mei",
+                "badge_number": "A12345",
+                "confirm_badge_number": "A12345",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(first_name="Mei", last_name="Li").exists())
 
     def test_login_success_redirects_to_calendar(self):
-        User.objects.create_user(username="bob", password="secret123")
+        User.objects.create_user(
+            username="bob",
+            last_name="Durand",
+            password="12345",
+        )
 
         response = self.client.post(
             reverse("login"),
             {
-                "username": "bob",
-                "password": "secret123",
+                "identifier": "r",
+                "badge_number": "12345",
             },
         )
 
         self.assertRedirects(response, reverse("calendar"))
+
+    def test_login_rejects_wrong_identifier_or_badge(self):
+        User.objects.create_user(
+            username="bob",
+            last_name="Durand",
+            password="12345",
+        )
+
+        wrong_identifier = self.client.post(
+            reverse("login"),
+            {
+                "identifier": "x",
+                "badge_number": "12345",
+            },
+        )
+        self.assertEqual(wrong_identifier.status_code, 200)
+
+        wrong_badge = self.client.post(
+            reverse("login"),
+            {
+                "identifier": "r",
+                "badge_number": "99999",
+            },
+        )
+        self.assertEqual(wrong_badge.status_code, 200)
 
 
 class CalendarAndLunchTests(TestCase):

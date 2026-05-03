@@ -72,7 +72,7 @@ Pour que Django charge ce fichier .env, installez python-dotenv :
     pip install python-dotenv
 
 Puis ajoutez ces deux lignes au tout début de
-lunch_project/settings.py (avant les autres imports) :
+django_project/settings.py (avant les autres imports) :
 
     from dotenv import load_dotenv
     load_dotenv()
@@ -87,7 +87,7 @@ et liront automatiquement vos variables d'environnement :
 --------------------------------------------------------
 ÉTAPE 5 — CONFIGURER ALLOWED_HOSTS
 --------------------------------------------------------
-Dans lunch_project/settings.py, remplacez :
+Dans django_project/settings.py, remplacez :
 
     ALLOWED_HOSTS = ["*"]
 
@@ -108,7 +108,7 @@ Ajoutez aussi votre domaine dans CSRF_TRUSTED_ORIGINS :
 --------------------------------------------------------
 ÉTAPE 6 — CONFIGURER LES FICHIERS STATIQUES
 --------------------------------------------------------
-Ajoutez cette ligne dans lunch_project/settings.py :
+Ajoutez cette ligne dans django_project/settings.py :
 
     STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -149,7 +149,7 @@ via l'interface /django-admin/ ou avec :
 Gunicorn est le serveur qui fait tourner Django en production.
 Testez qu'il démarre correctement :
 
-    gunicorn --bind 0.0.0.0:8000 lunch_project.wsgi:application
+    gunicorn --bind 0.0.0.0:8000 django_project.wsgi:application
 
 Ouvrez http://ip_serveur:8000 dans votre navigateur pour vérifier.
 Arrêtez-le avec Ctrl+C quand c'est bon.
@@ -177,7 +177,7 @@ Contenu du fichier (adaptez les chemins) :
     ExecStart=/home/votreuser/lunch/venv/bin/gunicorn \
               --workers 3 \
               --bind unix:/home/votreuser/lunch/lunch.sock \
-              lunch_project.wsgi:application
+              django_project.wsgi:application
 
     [Install]
     WantedBy=multi-user.target
