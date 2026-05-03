@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Tableau de bord - Lunch Reservation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <h2 class="mb-4">Bienvenue{% if first_name %}, {{ first_name }}{% endif %} !</h2>
+                
+                <div class="alert alert-info" role="alert">
+                    <strong>Application de reservation des repas</strong><br>
+                    Gerez vos reservations de dejeuner pour les mois a venir. Les memes options de repas sont proposees chaque jour et vous pouvez modifier votre choix jusqu'au jour meme.
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Mon Calendrier</h5>
+                                <p class="card-text small">Consultez et modifiez vos reservations de repas.</p>
+                                <a href="{% url 'calendar' %}" class="btn btn-primary btn-sm">Acceder</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% if is_staff %}
+                    <div class="col-md-6">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Recapitulatif Mensuel</h5>
+                                <p class="card-text small">Consultez toutes les reservations du mois.</p>
+                                <a href="{% url 'admin_summary' %}" class="btn btn-success btn-sm">Acceder</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <hr class="my-4">
+                
+                <div class="text-center">
+                    <p class="text-muted small mb-3">Identifiant: <strong>{{ username }}</strong></p>
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Se deconnecter</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Informations</h5>
+                <ul class="list-unstyled small text-muted">
+                    <li>✓ Consultez les options de repas disponibles</li>
+                    <li>✓ Modifiez vos reservations jusqu'au jour meme</li>
+                    <li>✓ Les reservations passees ne peuvent pas etre modifiees</li>
+                    {% if is_staff %}
+                    <li>✓ En tant que staff, vous pouvez definir les menus hebdomadaires</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

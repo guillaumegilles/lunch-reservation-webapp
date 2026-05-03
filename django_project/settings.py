@@ -86,7 +86,7 @@ USE_I18N = True
 USE_TZ = True
 
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/calendar/"
+LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
