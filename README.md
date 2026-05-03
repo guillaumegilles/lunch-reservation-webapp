@@ -80,7 +80,7 @@ Les employes se connectent, choisissent leur repas sur un calendrier mensuel, et
 
 **Flux principal**
 1. L'utilisateur se connecte (ou cree un compte).
-2. Il arrive sur son calendrier mensuel et clique sur un jour pour choisir son repas parmi les options disponibles.
+2. Il arrive sur son dashboard puis ouvre son calendrier mensuel pour choisir un repas parmi les options disponibles.
 3. La selection est sauvegardee en AJAX via `POST /save-lunch/` (JSON + CSRF token).
 4. Les dates passees sont verrouillees cote serveur.
 5. Le staff peut naviguer sur `/admin-summary/` pour voir le tableau recapitulatif mois par mois.

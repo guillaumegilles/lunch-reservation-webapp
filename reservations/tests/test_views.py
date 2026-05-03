@@ -2,6 +2,7 @@ import json
 from datetime import date, timedelta
 
 from django.contrib.auth.models import User
+from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 
@@ -259,3 +260,35 @@ class AdminSummaryTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Veuillez choisir un lundi")
         self.assertEqual(DailyMenu.objects.filter(date__year=2030, date__month=1).count(), 0)
+
+
+class SuggestionTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="K589479",
+            first_name="Alice",
+            last_name="Durand",
+            password="secret123",
+        )
+
+    def test_authenticated_user_can_submit_suggestion(self):
+        self.client.login(username="K589479", password="secret123")
+
+        response = self.client.post(
+            reverse("submit_suggestion"),
+            {"text": "Ajouter un rappel sur le dashboard."},
+        )
+
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, "Suggestion de K589479")
+        self.assertIn("Ajouter un rappel sur le dashboard.", mail.outbox[0].body)
+
+    def test_suggestion_requires_authentication(self):
+        response = self.client.post(
+            reverse("submit_suggestion"),
+            {"text": "Test"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("login"), response.url)
