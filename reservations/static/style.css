@@ -229,6 +229,11 @@ a:hover {
     color: rgba(255, 250, 241, 0.84) !important;
 }
 
+.calendar-selection-card {
+    max-width: 32rem;
+    margin: 0 auto;
+}
+
 #statusMsg {
     color: var(--plum);
     font-weight: 700;
