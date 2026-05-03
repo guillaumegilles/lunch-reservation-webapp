@@ -11,6 +11,10 @@
                 <form method="post">
                     {% csrf_token %}
                     <div class="mb-3 text-start">
+                        <label class="form-label">Identifiant (1 lettre + 6 chiffres)</label>
+                        <input class="form-control" name="identifier" maxlength="7" pattern="[A-Za-z][0-9]{6}" placeholder="Ex: K589479" required>
+                    </div>
+                    <div class="mb-3 text-start">
                         <label class="form-label">Nom de famille</label>
                         <input class="form-control" name="last_name" required>
                     </div>
@@ -19,12 +23,13 @@
                         <input class="form-control" name="first_name" required>
                     </div>
                     <div class="mb-3 text-start">
-                        <label class="form-label">Numero de badge</label>
-                        <input class="form-control" type="password" name="badge_number" required>
+                        <label class="form-label">Mot de passe</label>
+                        <input class="form-control" type="password" name="password" required>
+                        <div class="form-text">Minimum 8 caracteres, evitez les mots trop simples.</div>
                     </div>
                     <div class="mb-3 text-start">
-                        <label class="form-label">Confirmer le numero de badge</label>
-                        <input class="form-control" type="password" name="confirm_badge_number" required>
+                        <label class="form-label">Confirmer le mot de passe</label>
+                        <input class="form-control" type="password" name="confirm_password" required>
                     </div>
                     <button class="btn btn-primary w-100">Creer</button>
                 </form>

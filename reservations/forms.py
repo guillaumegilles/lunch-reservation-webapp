@@ -1,16 +1,24 @@
 from django import forms
+from django.core.validators import RegexValidator
+
+IDENTIFIER_REGEX = r"^[A-Za-z][0-9]{6}$"
+identifier_validator = RegexValidator(
+    regex=IDENTIFIER_REGEX,
+    message="Format attendu : 1 lettre suivie de 6 chiffres (ex: K589479).",
+)
 
 
 class LoginForm(forms.Form):
-    identifier = forms.CharField(max_length=1)
-    badge_number = forms.CharField(max_length=150, widget=forms.PasswordInput)
+    identifier = forms.CharField(min_length=7, max_length=7, validators=[identifier_validator])
+    password = forms.CharField(max_length=150, widget=forms.PasswordInput)
 
 
 class RegisterForm(forms.Form):
+    identifier = forms.CharField(min_length=7, max_length=7, validators=[identifier_validator])
     last_name = forms.CharField(max_length=150)
     first_name = forms.CharField(max_length=150)
-    badge_number = forms.CharField(max_length=150, widget=forms.PasswordInput)
-    confirm_badge_number = forms.CharField(max_length=150, widget=forms.PasswordInput)
+    password = forms.CharField(max_length=150, widget=forms.PasswordInput)
+    confirm_password = forms.CharField(max_length=150, widget=forms.PasswordInput)
 
 
 class WeeklyMenuForm(forms.Form):

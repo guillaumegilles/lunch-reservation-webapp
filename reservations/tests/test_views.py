@@ -13,50 +13,68 @@ class AuthFlowTests(TestCase):
         response = self.client.post(
             reverse("register"),
             {
+                "identifier": "K589479",
                 "last_name": "Durand",
                 "first_name": "Alice",
-                "badge_number": "A12345",
-                "confirm_badge_number": "A12345",
+                "password": "A12345xy",
+                "confirm_password": "A12345xy",
             },
         )
 
         self.assertRedirects(response, reverse("login"))
-        self.assertTrue(User.objects.filter(first_name="Alice", last_name="Durand").exists())
+        self.assertTrue(User.objects.filter(username="K589479", first_name="Alice", last_name="Durand").exists())
 
-        created_user = User.objects.get(first_name="Alice", last_name="Durand")
-        self.assertTrue(created_user.check_password("A12345"))
+        created_user = User.objects.get(username="K589479")
+        self.assertTrue(created_user.check_password("A12345xy"))
+
+    def test_register_rejects_invalid_identifier_format(self):
+        response = self.client.post(
+            reverse("register"),
+            {
+                "identifier": "5894799",
+                "last_name": "Durand",
+                "first_name": "Alice",
+                "password": "A12345xy",
+                "confirm_password": "A12345xy",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(last_name="Durand", first_name="Alice").exists())
+
+    def test_register_rejects_weak_password(self):
+        response = self.client.post(
+            reverse("register"),
+            {
+                "identifier": "K589479",
+                "last_name": "Durand",
+                "first_name": "Alice",
+                "password": "12345678",
+                "confirm_password": "12345678",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(username="K589479").exists())
 
     def test_register_rejects_mismatched_password(self):
         response = self.client.post(
             reverse("register"),
             {
+                "identifier": "K589479",
                 "last_name": "Durand",
                 "first_name": "Alice",
-                "badge_number": "A12345",
-                "confirm_badge_number": "DIFFERENT",
+                "password": "A12345xy",
+                "confirm_password": "DIFFERENT",
             },
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(first_name="Alice", last_name="Durand").exists())
-
-    def test_register_rejects_last_name_shorter_than_3_letters(self):
-        response = self.client.post(
-            reverse("register"),
-            {
-                "last_name": "Li",
-                "first_name": "Mei",
-                "badge_number": "A12345",
-                "confirm_badge_number": "A12345",
-            },
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(first_name="Mei", last_name="Li").exists())
+        self.assertFalse(User.objects.filter(username="K589479").exists())
 
     def test_login_success_redirects_to_calendar(self):
         User.objects.create_user(
-            username="bob",
+            username="K589479",
             last_name="Durand",
             password="12345",
         )
@@ -64,8 +82,8 @@ class AuthFlowTests(TestCase):
         response = self.client.post(
             reverse("login"),
             {
-                "identifier": "r",
-                "badge_number": "12345",
+                "identifier": "k589479",
+                "password": "12345",
             },
         )
 
@@ -73,7 +91,7 @@ class AuthFlowTests(TestCase):
 
     def test_login_rejects_wrong_identifier_or_badge(self):
         User.objects.create_user(
-            username="bob",
+            username="K589479",
             last_name="Durand",
             password="12345",
         )
@@ -81,8 +99,8 @@ class AuthFlowTests(TestCase):
         wrong_identifier = self.client.post(
             reverse("login"),
             {
-                "identifier": "x",
-                "badge_number": "12345",
+                "identifier": "X123456",
+                "password": "12345",
             },
         )
         self.assertEqual(wrong_identifier.status_code, 200)
@@ -90,8 +108,8 @@ class AuthFlowTests(TestCase):
         wrong_badge = self.client.post(
             reverse("login"),
             {
-                "identifier": "r",
-                "badge_number": "99999",
+                "identifier": "K589479",
+                "password": "99999",
             },
         )
         self.assertEqual(wrong_badge.status_code, 200)

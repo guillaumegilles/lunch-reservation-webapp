@@ -12,15 +12,6 @@
                     <a class="btn btn-primary" href="{% url 'login' %}">Se connecter</a>
                     <a class="btn btn-outline-secondary" href="{% url 'register' %}">Creer un compte</a>
                 </div>
-                {% if user %}
-                <hr>
-                <p class="small text-muted mb-2">Utilisateurs inscrits</p>
-                <div class="small">
-                    {% for username in user %}
-                        {{ username }}{% if not forloop.last %}, {% endif %}
-                    {% endfor %}
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
