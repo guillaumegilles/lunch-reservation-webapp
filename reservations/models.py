@@ -36,3 +36,16 @@ class Lunch(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.lunch_date} - {self.lunch_choice}"
+
+
+class Suggestion(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    text = models.TextField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
