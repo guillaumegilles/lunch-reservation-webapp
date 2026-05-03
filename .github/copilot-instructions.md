@@ -10,7 +10,7 @@ Django web app for office lunch reservations. Employees log in, pick a daily lun
 # Apply DB migrations (first time or after model changes)
 python manage.py migrate
 
-# Create default admin user (admin / password)
+# Create default admin user (Z999999 / password)
 python manage.py init_db
 
 # Run dev server (http://127.0.0.1:8000)
@@ -56,4 +56,3 @@ python manage.py shell -c "from django.contrib.auth.models import User; User.obj
 - **UI and flash messages are in French.**
 - **Templates** live in `reservations/templates/` and are rendered directly by name (for example: `calendar.html`).
 - **Days context** — the calendar view passes `days` as a list of dicts `{day, weekday, lunch}` so templates can access the lunch choice without dict key formatting tricks.
-

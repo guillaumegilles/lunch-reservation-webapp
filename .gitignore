@@ -15,3 +15,5 @@ build/
 
 # Old backup files
 *.old
+.vercel
+.env*.local

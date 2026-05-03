@@ -3,21 +3,24 @@ from django.core.management.base import BaseCommand
 
 from reservations.models import MealOption
 
+DEFAULT_ADMIN_USERNAME = "Z999999"
+DEFAULT_ADMIN_PASSWORD = "password"
+
 
 class Command(BaseCommand):
     help = "Create default admin user if it does not exist."
 
     def handle(self, *args, **options):
-        if not User.objects.filter(username="admin").exists():
+        if not User.objects.filter(username=DEFAULT_ADMIN_USERNAME).exists():
             User.objects.create_user(
-                username="admin",
-                password="password",
+                username=DEFAULT_ADMIN_USERNAME,
+                password=DEFAULT_ADMIN_PASSWORD,
                 is_staff=True,
                 is_superuser=True,
             )
             self.stdout.write(self.style.SUCCESS("Default admin user created."))
         else:
-            self.stdout.write("Admin user already exists.")
+            self.stdout.write("Default admin user already exists.")
 
         alternatives = [
             ("🥩 Steak haché", 50),

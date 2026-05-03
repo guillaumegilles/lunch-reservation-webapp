@@ -65,7 +65,7 @@ Pour arreter le serveur dans le terminal: `Ctrl + C`
 
 Compte admin cree par `init_db`:
 
-- Username: admin
+- Username: Z999999
 - Password: password
 
 Tu peux aussi creer un compte depuis la page d'inscription.

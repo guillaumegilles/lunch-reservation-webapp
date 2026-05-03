@@ -129,7 +129,7 @@ Appliquez les migrations et créez l'utilisateur admin :
     python manage.py init_db
 
 L'utilisateur admin est créé avec :
-    login    : admin
+    login    : Z999999
     mot de passe : password
 
 ⚠️  CHANGEZ CE MOT DE PASSE IMMÉDIATEMENT après la première connexion
@@ -137,7 +137,7 @@ via l'interface /django-admin/ ou avec :
 
     python manage.py shell -c "
     from django.contrib.auth.models import User
-    u = User.objects.get(username='admin')
+    u = User.objects.get(username='Z999999')
     u.set_password('VotreNouveauMotDePasse')
     u.save()
     "
