@@ -46,7 +46,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-body">
                 <h5 class="card-title">Informations</h5>
                 <ul class="list-unstyled small text-muted">
@@ -57,6 +57,32 @@
                     <li>✓ En tant que staff, vous pouvez definir les menus hebdomadaires</li>
                     {% endif %}
                 </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Suggestions ou Ameliorations</h5>
+                <p class="small text-muted mb-3">Vos remarques nous aident a ameliorer l'application.</p>
+                
+                {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <form method="post" action="{% url 'submit_suggestion' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        {{ form.text }}
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Envoyer</button>
+                </form>
             </div>
         </div>
     </div>

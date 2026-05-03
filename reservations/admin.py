@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import DailyMenu, Lunch, MealOption
+from .models import DailyMenu, Lunch, MealOption, Suggestion
 
 
 @admin.register(MealOption)
@@ -22,3 +22,18 @@ class LunchAdmin(admin.ModelAdmin):
     list_display = ("user", "lunch_date", "lunch_choice")
     list_filter = ("lunch_date", "user")
     search_fields = ("user__username", "lunch_choice")
+
+
+@admin.register(Suggestion)
+class SuggestionAdmin(admin.ModelAdmin):
+    list_display = ("user", "text_short", "created_at", "is_read")
+    list_filter = ("is_read", "created_at")
+    search_fields = ("user__username", "text")
+    list_editable = ("is_read",)
+    readonly_fields = ("created_at", "user")
+    ordering = ("-created_at",)
+    
+    def text_short(self, obj):
+        """Display truncated suggestion text in list view."""
+        return obj.text[:50] + "..." if len(obj.text) > 50 else obj.text
+    text_short.short_description = "Suggestion"

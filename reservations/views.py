@@ -2,8 +2,10 @@ import json
 from calendar import month_name, monthrange
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
+from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -13,7 +15,7 @@ from django.urls import reverse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-from .forms import LoginForm, RegisterForm, WeeklyMenuForm
+from .forms import LoginForm, RegisterForm, WeeklyMenuForm, SuggestionForm
 from .models import DailyMenu, Lunch, MealOption
 
 WEEKDAY_MENUS = {
@@ -127,10 +129,12 @@ def logout_view(request):
 @login_required
 def dashboard_view(request):
     """Landing page after login with general information and navigation."""
+    form = SuggestionForm()
     context = {
         'username': request.user.username,
         'first_name': request.user.first_name,
         'is_staff': request.user.is_staff,
+        'form': form,
     }
     return render(request, "dashboard.html", context)
 
@@ -297,3 +301,27 @@ def admin_summary(request):
             "weekly_menu_form": weekly_form,
         },
     )
+
+
+@require_POST
+@login_required
+def submit_suggestion(request):
+    form = SuggestionForm(request.POST)
+    if form.is_valid():
+        text = form.cleaned_data['text']
+        subject = f"Suggestion de {request.user.username}"
+        body = f"Utilisateur : {request.user.get_full_name()} ({request.user.username})\n\n{text}"
+        try:
+            send_mail(
+                subject,
+                body,
+                settings.DEFAULT_FROM_EMAIL,
+                [settings.SUGGESTION_RECIPIENT_EMAIL],
+                fail_silently=False,
+            )
+            messages.success(request, "Merci pour votre suggestion !")
+        except Exception:
+            messages.error(request, "Erreur lors de l'envoi de votre suggestion. Veuillez reessayer.")
+    else:
+        messages.error(request, "Erreur lors de l'envoi de votre suggestion.")
+    return redirect('dashboard')

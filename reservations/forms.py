@@ -36,3 +36,12 @@ class WeeklyMenuForm(forms.Form):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs["class"] = "form-control"
+
+
+class SuggestionForm(forms.Form):
+    suggestion = forms.CharField(
+        max_length=500,
+        widget=forms.Textarea(attrs={"rows": 4, "class": "form-control"}),
+        label="Votre suggestion ou amelioration",
+        help_text="Partagez vos idees pour ameliorer l'application (500 caracteres maximum)"
+    )
