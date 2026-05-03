@@ -46,7 +46,7 @@ def _menu_for_date(current_date, db_menus=None):
 
 def index(request):
     if request.user.is_authenticated:
-        return redirect("calendar")
+        return redirect("dashboard")
 
     users = User.objects.values_list("username", flat=True).order_by("username")
     return render(request, "index.html", {"users": users})
@@ -70,7 +70,7 @@ def login_view(request):
         if user is not None:
             login(request, user)
             messages.success(request, f"Connecte en tant que {user.username}")
-            return redirect("calendar")
+            return redirect("dashboard")
 
         messages.error(request, "Identifiants invalides")
     else:

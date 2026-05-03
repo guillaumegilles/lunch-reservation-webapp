@@ -72,7 +72,7 @@ class AuthFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(User.objects.filter(username="K589479").exists())
 
-    def test_login_success_redirects_to_calendar(self):
+    def test_login_success_redirects_to_dashboard(self):
         User.objects.create_user(
             username="K589479",
             last_name="Durand",
@@ -87,7 +87,15 @@ class AuthFlowTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("calendar"))
+        self.assertRedirects(response, reverse("dashboard"))
+
+    def test_index_redirects_authenticated_user_to_dashboard(self):
+        user = User.objects.create_user(username="K589479", password="12345")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("index"))
+
+        self.assertRedirects(response, reverse("dashboard"))
 
     def test_login_rejects_wrong_identifier_or_badge(self):
         User.objects.create_user(
