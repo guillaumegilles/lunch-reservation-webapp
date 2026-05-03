@@ -1,4 +1,5 @@
 import json
+import re
 from calendar import month_name, monthrange
 from datetime import date, timedelta
 
@@ -48,22 +49,54 @@ def index(request):
     return render(request, "index.html", {"users": users})
 
 
+def _third_letter_identifier(last_name):
+    cleaned = (last_name or "").strip()
+    if len(cleaned) < 3:
+        return ""
+    return cleaned[2].lower()
+
+
+def _build_unique_username(first_name, last_name):
+    base = f"{first_name}.{last_name}".strip().lower()
+    base = re.sub(r"[^a-z0-9._-]+", "", base)
+    if not base:
+        base = "agent"
+
+    candidate = base
+    suffix = 2
+    while User.objects.filter(username=candidate).exists():
+        candidate = f"{base}{suffix}"
+        suffix += 1
+    return candidate
+
+
 def login_view(request):
     if request.method == "POST":
         form = LoginForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Veuillez renseigner le nom d'utilisateur et le mot de passe")
+            messages.error(request, "Veuillez renseigner l'identifiant et le numero de badge")
             return render(request, "login.html", {"form": form})
 
-        user = authenticate(
-            request,
-            username=form.cleaned_data["username"],
-            password=form.cleaned_data["password"],
-        )
-        if user is not None:
-            login(request, user)
-            messages.success(request, f"Connecte en tant que {user.username}")
+        identifier = form.cleaned_data["identifier"].strip().lower()
+        badge_number = form.cleaned_data["badge_number"]
+
+        candidates = []
+        for account in User.objects.exclude(last_name=""):
+            if _third_letter_identifier(account.last_name) != identifier:
+                continue
+            user = authenticate(request, username=account.username, password=badge_number)
+            if user is not None:
+                candidates.append(user)
+
+        if len(candidates) == 1:
+            login(request, candidates[0])
+            messages.success(request, f"Connecte en tant que {candidates[0].username}")
             return redirect("calendar")
+
+        if len(candidates) > 1:
+            messages.error(request, "Identifiant ambigu. Contactez le CSE.")
+            return render(request, "login.html", {"form": form})
+
         messages.error(request, "Identifiants invalides")
     else:
         form = LoginForm()
@@ -75,23 +108,33 @@ def register_view(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Nom d'utilisateur et mot de passe requis")
+            messages.error(request, "Nom, prenom et numero de badge requis")
             return render(request, "register.html", {"form": form})
 
-        username = form.cleaned_data["username"]
-        password = form.cleaned_data["password"]
-        confirm = form.cleaned_data["confirm"]
+        last_name = form.cleaned_data["last_name"].strip()
+        first_name = form.cleaned_data["first_name"].strip()
+        badge_number = form.cleaned_data["badge_number"]
+        confirm_badge_number = form.cleaned_data["confirm_badge_number"]
 
-        if password != confirm:
-            messages.error(request, "Les mots de passe ne correspondent pas")
+        if len(last_name) < 3:
+            messages.error(request, "Le nom de famille doit contenir au moins 3 lettres")
             return render(request, "register.html", {"form": form})
 
-        if User.objects.filter(username=username).exists():
-            messages.error(request, "Le nom d'utilisateur existe deja")
+        if badge_number != confirm_badge_number:
+            messages.error(request, "Les numeros de badge ne correspondent pas")
             return render(request, "register.html", {"form": form})
 
-        User.objects.create_user(username=username, password=password)
-        messages.success(request, "Compte cree. Vous pouvez vous connecter.")
+        username = _build_unique_username(first_name, last_name)
+        User.objects.create_user(
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            password=badge_number,
+        )
+        messages.success(
+            request,
+            "Compte cree. Votre identifiant est la 3e lettre de votre nom de famille.",
+        )
         return redirect("login")
     else:
         form = RegisterForm()

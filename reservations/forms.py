@@ -2,14 +2,15 @@ from django import forms
 
 
 class LoginForm(forms.Form):
-    username = forms.CharField(max_length=150)
-    password = forms.CharField(widget=forms.PasswordInput)
+    identifier = forms.CharField(max_length=1)
+    badge_number = forms.CharField(max_length=150, widget=forms.PasswordInput)
 
 
 class RegisterForm(forms.Form):
-    username = forms.CharField(max_length=150)
-    password = forms.CharField(widget=forms.PasswordInput)
-    confirm = forms.CharField(widget=forms.PasswordInput)
+    last_name = forms.CharField(max_length=150)
+    first_name = forms.CharField(max_length=150)
+    badge_number = forms.CharField(max_length=150, widget=forms.PasswordInput)
+    confirm_badge_number = forms.CharField(max_length=150, widget=forms.PasswordInput)
 
 
 class WeeklyMenuForm(forms.Form):

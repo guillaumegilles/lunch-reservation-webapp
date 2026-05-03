@@ -11,12 +11,12 @@
                 <form method="post">
                     {% csrf_token %}
                     <div class="mb-3 text-start">
-                        <label class="form-label">Nom d'utilisateur</label>
-                        <input class="form-control" name="username" required>
+                        <label class="form-label">Identifiant (3e lettre du nom)</label>
+                        <input class="form-control" name="identifier" maxlength="1" required>
                     </div>
                     <div class="mb-3 text-start">
-                        <label class="form-label">Mot de passe</label>
-                        <input class="form-control" type="password" name="password" required>
+                        <label class="form-label">Numero de badge</label>
+                        <input class="form-control" type="password" name="badge_number" required>
                     </div>
                     <button class="btn btn-primary w-100">Se connecter</button>
                 </form>
