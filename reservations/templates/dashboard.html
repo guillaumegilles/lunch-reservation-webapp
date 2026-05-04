@@ -10,8 +10,8 @@
                 <h2 class="mb-4">Bienvenue{% if first_name %}, {{ first_name }}{% endif %} !</h2>
                 
                 <div class="alert alert-info" role="alert">
-                    <strong>Application de reservation des repas</strong><br>
-                    Gerez vos reservations de dejeuner pour les mois a venir. Les memes options de repas sont proposees chaque jour et vous pouvez modifier votre choix jusqu'au jour meme.
+                    <strong>Application de réservation des repas</strong><br>
+                    Gérez vos réservations de déjeuner pour les mois à venir. Les mêmes options de repas sont proposées chaque jour et vous pouvez modifier votre choix jusqu'au jour même.
                 </div>
 
                 <div class="row g-3">
@@ -19,8 +19,8 @@
                         <div class="card border-primary">
                             <div class="card-body text-center">
                                 <h5 class="card-title">Mon Calendrier</h5>
-                                <p class="card-text small">Consultez et modifiez vos reservations de repas.</p>
-                                <a href="{% url 'calendar' %}" class="btn btn-primary btn-sm">Acceder</a>
+                                <p class="card-text small">Consultez et modifiez vos réservations de repas.</p>
+                                <a href="{% url 'calendar' %}" class="btn btn-primary btn-sm">Accéder</a>
                             </div>
                         </div>
                     </div>
@@ -28,9 +28,9 @@
                     <div class="col-md-6">
                         <div class="card border-success">
                             <div class="card-body text-center">
-                                <h5 class="card-title">Recapitulatif Mensuel</h5>
-                                <p class="card-text small">Consultez toutes les reservations du mois.</p>
-                                <a href="{% url 'admin_summary' %}" class="btn btn-success btn-sm">Acceder</a>
+                                <h5 class="card-title">Récapitulatif mensuel</h5>
+                                <p class="card-text small">Consultez toutes les réservations du mois.</p>
+                                <a href="{% url 'admin_summary' %}" class="btn btn-success btn-sm">Accéder</a>
                             </div>
                         </div>
                     </div>
@@ -41,7 +41,7 @@
                 
                 <div class="text-center">
                     <p class="text-muted small mb-3">Identifiant: <strong>{{ username }}</strong></p>
-                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Se deconnecter</a>
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Se déconnecter</a>
                 </div>
             </div>
         </div>
@@ -51,10 +51,10 @@
                 <h5 class="card-title">Informations</h5>
                 <ul class="list-unstyled small text-muted">
                     <li>✓ Consultez les options de repas disponibles</li>
-                    <li>✓ Modifiez vos reservations jusqu'au jour meme</li>
-                    <li>✓ Les reservations passees ne peuvent pas etre modifiees</li>
+                    <li>✓ Modifiez vos réservations jusqu'au jour même</li>
+                    <li>✓ Les réservations passées ne peuvent pas être modifiées</li>
                     {% if is_staff %}
-                    <li>✓ En tant que staff, vous pouvez definir les menus hebdomadaires</li>
+                    <li>✓ En tant que staff, vous pouvez définir les menus hebdomadaires</li>
                     {% endif %}
                 </ul>
             </div>
@@ -62,8 +62,8 @@
 
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title mb-3">Suggestions ou Ameliorations</h5>
-                <p class="small text-muted mb-3">Vos remarques nous aident a ameliorer l'application.</p>
+                <h5 class="card-title mb-3">Suggestions ou améliorations</h5>
+                <p class="small text-muted mb-3">Vos remarques nous aident à améliorer l'application.</p>
                 
                 {% if messages %}
                 <div class="messages">

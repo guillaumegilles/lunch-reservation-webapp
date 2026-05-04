@@ -38,7 +38,7 @@
         <div class="card shadow-sm calendar-selection-card">
             <div class="card-body text-center">
                 <h4>Selection du jour</h4>
-                <p id="selectedDay">Aucun jour selectionne</p>
+                <p id="selectedDay">Aucun jour sélectionné</p>
 
                 <select id="lunchOption" class="form-select mb-3">
                     <option value="">-- Choisir un repas --</option>
@@ -110,7 +110,7 @@ function syncLunchOption(defaultMenu, existingLunch) {
 async function saveLunch() {
     const lunch = document.getElementById('lunchOption').value;
     if (!selectedDay || !lunch) {
-        alert("Veuillez selectionner un jour et un repas.");
+        alert("Veuillez sélectionner un jour et un repas.");
         return;
     }
 
