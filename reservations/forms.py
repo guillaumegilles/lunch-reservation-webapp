@@ -42,6 +42,6 @@ class SuggestionForm(forms.Form):
     text = forms.CharField(
         max_length=500,
         widget=forms.Textarea(attrs={"rows": 4, "class": "form-control"}),
-        label="Votre suggestion ou amelioration",
-        help_text="Partagez vos idees pour ameliorer l'application (500 caracteres maximum)"
+        label="Votre suggestion ou amélioration",
+        help_text="Partagez vos idées pour améliorer l'application (500 caractères maximum)"
     )

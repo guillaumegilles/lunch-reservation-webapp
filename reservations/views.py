@@ -23,7 +23,7 @@ WEEKDAY_MENUS = {
     1: "Mardi: 🐟 Poisson",
     2: "Mercredi: 🥩 Steak haché",
     3: "Jeudi: 🍳 Œufs brouillés",
-    4: "Vendredi: 🍝 Pates",
+    4: "Vendredi: 🍝 Pâtes",
 }
 
 
@@ -69,8 +69,8 @@ def login_view(request):
         user = authenticate(request, username=identifier, password=password)
         if user is not None:
             login(request, user)
-            messages.success(request, f"Connecte en tant que {user.username}")
-            return redirect("dashboard")
+            messages.success(request, f"Connecté en tant que {user.username}")
+            return redirect("calendar")
 
         messages.error(request, "Identifiants invalides")
     else:
@@ -83,7 +83,7 @@ def register_view(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Identifiant, nom, prenom et mot de passe requis")
+            messages.error(request, "Identifiant, nom, prénom et mot de passe requis")
             return render(request, "register.html", {"form": form})
 
         identifier = _normalize_identifier(form.cleaned_data["identifier"])
@@ -97,7 +97,7 @@ def register_view(request):
             return render(request, "register.html", {"form": form})
 
         if User.objects.filter(username=identifier).exists():
-            messages.error(request, "Cet identifiant existe deja")
+            messages.error(request, "Cet identifiant existe déjà")
             return render(request, "register.html", {"form": form})
 
         draft_user = User(username=identifier, first_name=first_name, last_name=last_name)
@@ -113,7 +113,7 @@ def register_view(request):
             last_name=last_name,
             password=password,
         )
-        messages.success(request, "Compte cree. Vous pouvez vous connecter.")
+        messages.success(request, "Compte créé. Vous pouvez vous connecter.")
         return redirect("login")
     else:
         form = RegisterForm()
@@ -204,7 +204,7 @@ def save_lunch(request):
     lunch_date = date(year, month, day)
     if lunch_date < date.today():
         return JsonResponse(
-            {"status": "error", "message": "Impossible de modifier un dejeuner passe."},
+            {"status": "error", "message": "Impossible de modifier un déjeuner passé."},
             status=400,
         )
 
@@ -214,13 +214,13 @@ def save_lunch(request):
         defaults={"lunch_choice": lunch},
     )
 
-    return JsonResponse({"status": "success", "message": "Dejeuner enregistre."})
+    return JsonResponse({"status": "success", "message": "Déjeuner enregistré."})
 
 
 @login_required
 def admin_summary(request):
     if not request.user.is_staff:
-        messages.error(request, "Acces reserve aux personnels du CSE")
+        messages.error(request, "Accès réservé aux personnels du CSE")
         return redirect("calendar")
 
     today = date.today()
@@ -234,8 +234,8 @@ def admin_summary(request):
             "monday_menu": "🥗 Plat du jour",
             "tuesday_menu": "🐟 Poisson",
             "wednesday_menu": "🥩 Steak haché",
-            "thursday_menu": "🍳 Oeufs brouillés",
-            "friday_menu": "🍝 Pates",
+            "thursday_menu": "🍳 Œufs brouillés",
+            "friday_menu": "🍝 Pâtes",
         }
     )
 
@@ -259,7 +259,7 @@ def admin_summary(request):
                         defaults={"menu": weekly_form.cleaned_data[key]},
                     )
 
-                messages.success(request, "Menus hebdomadaires enregistres.")
+                messages.success(request, "Menus hebdomadaires enregistrés.")
                 summary_year = request.POST.get("summary_year")
                 summary_month = request.POST.get("summary_month")
                 if summary_year and summary_month:
