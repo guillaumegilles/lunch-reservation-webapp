@@ -15,6 +15,7 @@ class AuthFlowTests(TestCase):
             reverse("register"),
             {
                 "identifier": "K589479",
+                "badge_number": "123456",
                 "last_name": "Durand",
                 "first_name": "Alice",
                 "password": "A12345xy",
@@ -33,6 +34,7 @@ class AuthFlowTests(TestCase):
             reverse("register"),
             {
                 "identifier": "5894799",
+                "badge_number": "123456",
                 "last_name": "Durand",
                 "first_name": "Alice",
                 "password": "A12345xy",
@@ -48,6 +50,7 @@ class AuthFlowTests(TestCase):
             reverse("register"),
             {
                 "identifier": "K589479",
+                "badge_number": "123456",
                 "last_name": "Durand",
                 "first_name": "Alice",
                 "password": "12345678",
@@ -63,6 +66,7 @@ class AuthFlowTests(TestCase):
             reverse("register"),
             {
                 "identifier": "K589479",
+                "badge_number": "123456",
                 "last_name": "Durand",
                 "first_name": "Alice",
                 "password": "A12345xy",
