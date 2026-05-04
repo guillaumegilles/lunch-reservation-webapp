@@ -16,7 +16,10 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import LoginForm, RegisterForm, WeeklyMenuForm, SuggestionForm
-from .models import DailyMenu, Lunch, MealOption
+from .models import DailyMenu, Lunch
+
+DEFAULT_DAILY_MENU = "Plat du jour"
+CALENDAR_ALTERNATIVE_OPTIONS = ["Poisson", "Œufs brouillés"]
 
 WEEKDAY_MENUS = {
     0: "Lundi: 🥗 Plat du jour",
@@ -41,7 +44,7 @@ def _month_navigation(year, month):
 def _menu_for_date(current_date, db_menus=None):
     if db_menus and current_date.day in db_menus:
         return db_menus[current_date.day]
-    return WEEKDAY_MENUS[current_date.weekday()]
+    return DEFAULT_DAILY_MENU
 
 
 def index(request):
@@ -182,7 +185,7 @@ def calendar_view(request):
             "month": month,
             "month_name": month_name[month],
             "days": days,
-            "options": list(MealOption.objects.filter(is_active=True).values_list("name", flat=True)),
+            "alternative_options": CALENDAR_ALTERNATIVE_OPTIONS,
             "prev_month": prev_month,
             "next_month": next_month,
             "prev_year": prev_year,
@@ -205,6 +208,17 @@ def save_lunch(request):
     if lunch_date < date.today():
         return JsonResponse(
             {"status": "error", "message": "Impossible de modifier un déjeuner passé."},
+            status=400,
+        )
+
+    day_menu = DailyMenu.objects.filter(date=lunch_date).values_list("menu", flat=True).first() or DEFAULT_DAILY_MENU
+    allowed_choices = {day_menu, *CALENDAR_ALTERNATIVE_OPTIONS}
+    if lunch not in allowed_choices:
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": "Choix de repas invalide pour ce jour.",
+            },
             status=400,
         )
 
