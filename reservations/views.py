@@ -86,14 +86,19 @@ def register_view(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Identifiant, nom, prénom et mot de passe requis")
+            messages.error(request, "Identifiant, numéro de badge, nom, prénom et mot de passe requis")
             return render(request, "register.html", {"form": form})
 
         identifier = _normalize_identifier(form.cleaned_data["identifier"])
+        badge_number = form.cleaned_data["badge_number"].strip()
         last_name = form.cleaned_data["last_name"].strip()
         first_name = form.cleaned_data["first_name"].strip()
         password = form.cleaned_data["password"]
         confirm_password = form.cleaned_data["confirm_password"]
+
+        if not badge_number:
+            messages.error(request, "Le numéro de badge est requis")
+            return render(request, "register.html", {"form": form})
 
         if password != confirm_password:
             messages.error(request, "Les mots de passe ne correspondent pas")

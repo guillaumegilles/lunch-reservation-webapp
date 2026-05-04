@@ -15,6 +15,7 @@ class LoginForm(forms.Form):
 
 class RegisterForm(forms.Form):
     identifier = forms.CharField(min_length=7, max_length=7, validators=[identifier_validator])
+    badge_number = forms.CharField(max_length=50)
     last_name = forms.CharField(max_length=150)
     first_name = forms.CharField(max_length=150)
     password = forms.CharField(max_length=150, widget=forms.PasswordInput)
