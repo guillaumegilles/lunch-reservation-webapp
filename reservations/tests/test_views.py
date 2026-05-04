@@ -73,7 +73,7 @@ class AuthFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(User.objects.filter(username="K589479").exists())
 
-    def test_login_success_redirects_to_dashboard(self):
+    def test_login_success_redirects_to_calendar(self):
         User.objects.create_user(
             username="K589479",
             last_name="Durand",
@@ -88,7 +88,7 @@ class AuthFlowTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("dashboard"))
+        self.assertRedirects(response, reverse("calendar"))
 
     def test_index_redirects_authenticated_user_to_dashboard(self):
         user = User.objects.create_user(username="K589479", password="12345")
@@ -164,6 +164,23 @@ class CalendarAndLunchTests(TestCase):
         self.assertTrue(all(day.get("menu") for day in days))
         self.assertTrue(all(date(response.context["year"], response.context["month"], day["day"]).weekday() < 5 for day in days))
 
+    def test_calendar_days_are_blank_without_existing_reservation(self):
+        self.client.login(username="jane", password="secret123")
+
+        response = self.client.get(reverse("calendar"))
+
+        self.assertEqual(response.status_code, 200)
+        days = response.context["days"]
+        self.assertTrue(all(day.get("lunch", "") == "" for day in days))
+
+    def test_calendar_exposes_two_alternative_options(self):
+        self.client.login(username="jane", password="secret123")
+
+        response = self.client.get(reverse("calendar"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["alternative_options"], ["Poisson", "Œufs brouillés"])
+
     def test_db_menu_overrides_default_for_specific_date(self):
         self.client.login(username="jane", password="secret123")
         future = date.today() + timedelta(days=1)
@@ -196,6 +213,25 @@ class CalendarAndLunchTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertFalse(Lunch.objects.filter(user=self.user, lunch_date=past).exists())
+
+    def test_save_lunch_rejects_invalid_option(self):
+        self.client.login(username="jane", password="secret123")
+        future = date.today() + timedelta(days=1)
+
+        payload = {
+            "day": future.day,
+            "month": future.month,
+            "year": future.year,
+            "lunch": "Steak",
+        }
+        response = self.client.post(
+            reverse("save_lunch"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Lunch.objects.filter(user=self.user, lunch_date=future).exists())
 
 
 class AdminSummaryTests(TestCase):
