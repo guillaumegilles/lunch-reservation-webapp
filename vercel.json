@@ -1,8 +1,15 @@
 {
-  "buildCommand": "pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput",
-  "functions": {
-    "django_project/wsgi.py": {
-      "runtime": "python3.12"
+  "version": 2,
+  "builds": [
+    {
+      "src": "django_project/wsgi.py",
+      "use": "@vercel/python"
     }
-  }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "django_project/wsgi.py"
+    }
+  ]
 }
