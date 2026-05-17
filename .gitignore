@@ -1,5 +1,7 @@
 .venv/
 
+.github/
+
 *.pyc
 __pycache__/
 
