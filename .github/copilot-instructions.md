@@ -56,3 +56,9 @@ python manage.py shell -c "from django.contrib.auth.models import User; User.obj
 - **UI and flash messages are in French.**
 - **Templates** live in `reservations/templates/` and are rendered directly by name (for example: `calendar.html`).
 - **Days context** — the calendar view passes `days` as a list of dicts `{day, weekday, lunch}` so templates can access the lunch choice without dict key formatting tricks.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at `specs/001-lunch-reservation-mvp/plan.md`.
+<!-- SPECKIT END -->
