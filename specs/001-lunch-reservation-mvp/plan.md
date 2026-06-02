@@ -44,7 +44,7 @@ env vars; no raw SQL; no custom User model
 | Principle | Status | Notes |
 |-----------|--------|-------|
 | I. Sécurité par défaut | ✅ Pass | `@login_required` on all protected views; `is_staff` guard in `admin_summary`; CSRF enforced; secrets via env vars; `DEBUG` env-driven |
-| II. Intégrité des données | ⚠️ Gap | `save_lunch` does not validate `lunch_choice` against active `MealOption` records — any string is accepted. Must add server-side validation. |
+| II. Intégrité des données | ⚠️ Gap | `save_lunch` does not validate `lunch_choice` against active `MealOption` records — any string is accepted. Must add server-side validation. (addressed by T010) |
 | III. Interface minimale | ✅ Pass | DTL templates; vanilla JS AJAX with `X-CSRFToken`; single `style.css`; all UI in French |
 | IV. Conventions Django | ✅ Pass | Built-in `User`; `is_staff` only for access control; ORM-only; URLs in `reservations/urls.py`; `init_db` management command |
 | V. Config pilotée | ✅ Pass | All secrets via `os.environ.get()`; SQLite/PostgreSQL switch via `DATABASE_URL`; Vercel `python3.12` runtime in `vercel.json` |

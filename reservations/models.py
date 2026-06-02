@@ -38,6 +38,14 @@ class Lunch(models.Model):
         return f"{self.user.username} - {self.lunch_date} - {self.lunch_choice}"
 
 
+class UserProfile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    badge_number = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.badge_number}"
+
+
 class Suggestion(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     text = models.TextField(max_length=500)

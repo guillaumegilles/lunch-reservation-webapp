@@ -38,11 +38,12 @@ export DEBUG=True
 python manage.py migrate
 ```
 
-### 4. Seed the default admin user
+### 4. Seed the default admin user and meal options
 
 ```bash
 python manage.py init_db
 # Creates user Z999999 with password "password" and is_staff=True
+# Seeds 5 default MealOption records: 🥗 Plat du jour, 🐟 Poisson, 🥩 Steak haché, 🍳 Œufs brouillés, 🍝 Pâtes
 ```
 
 ### 5. Run the development server
@@ -94,9 +95,18 @@ Password: password
 
 ---
 
+## Reservation Rules
+
+- **7-day advance booking**: Employees can only make or cancel reservations for dates **at least 7 calendar days in the future**. Days within 7 days are displayed as locked (greyed out) on the calendar and cannot be selected.
+
+---
+
 ## Adding Meal Options
 
-Via Django admin at `/django-admin/reservations/mealoption/`:
+Five default meal options are seeded automatically when you run `python manage.py init_db`:
+🥗 Plat du jour, 🐟 Poisson, 🥩 Steak haché, 🍳 Œufs brouillés, 🍝 Pâtes.
+
+To add further options, use Django admin at `/django-admin/reservations/mealoption/`:
 - Click **Add meal option**
 - Enter a name (e.g. "Végétarien"), set `is_active = True`, assign an order
 - Save
@@ -157,7 +167,7 @@ CSRF_TRUSTED_ORIGINS = [..., "https://reservations.cse-na.fr"]
 ```
 django_project/     # Project settings, root URLs, WSGI
 reservations/       # All app logic
-  models.py         # MealOption, DailyMenu, Lunch, Suggestion
+  models.py         # MealOption, DailyMenu, Lunch, Suggestion, UserProfile
   views.py          # All views + WEEKDAY_MENUS default constant
   forms.py          # LoginForm, RegisterForm, WeeklyMenuForm, SuggestionForm
   urls.py           # URL patterns
