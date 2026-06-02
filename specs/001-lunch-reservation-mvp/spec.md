@@ -46,30 +46,36 @@ independently of any reservation logic.
 ### User Story 2 - Meal Reservation via Monthly Calendar (Priority: P2)
 
 A logged-in employee opens the monthly calendar and sees all working days (Monday–Friday)
-for the current month. For each upcoming working day, they see the menu of the day and can
-select or change their meal option. The selection is saved without a full page reload.
-Past dates are locked.
+for the current month. For each working day that is at least 7 days in the future, they
+see the menu of the day and can select or change their meal option. The selection is saved
+without a full page reload. Days fewer than 7 days away (including today) are locked.
+This advance window allows the restaurant to plan and budget meals accordingly.
 
 **Why this priority**: This is the core value proposition of the app — replacing manual
 lunch collection with a self-service digital process. It directly serves every employee,
 every working day.
 
 **Independent Test**: Can be fully tested by a logged-in employee selecting a meal option
-for tomorrow, refreshing the page, and confirming the choice persists correctly.
+for a day at least 7 days from now, refreshing the page, and confirming the choice persists
+correctly.
 
 **Acceptance Scenarios**:
 
 1. **Given** a logged-in employee, **When** they open the calendar, **Then** they see all
    working days of the current month with the daily menu displayed for each day.
-2. **Given** a future working day on the calendar, **When** the employee selects a meal
-   option, **Then** the selection is saved immediately without reloading the page and a
+2. **Given** a working day at least 7 days in the future, **When** the employee selects a
+   meal option, **Then** the selection is saved immediately without reloading the page and a
    confirmation is shown.
 3. **Given** a previously made reservation, **When** the employee selects a different
-   option for the same future day, **Then** the reservation is updated to the new choice.
-4. **Given** a past working day, **When** the employee attempts to select or change a meal
-   option, **Then** the action is rejected and an error message is shown.
+   option for the same eligible day, **Then** the reservation is updated to the new choice.
+4. **Given** a working day fewer than 7 days away (including today) or in the past,
+   **When** the employee attempts to select or change a meal option, **Then** the action is
+   rejected and an error message is shown.
 5. **Given** the calendar, **When** the employee clicks "previous month" or "next month",
    **Then** the calendar updates to display that month's working days.
+6. **Given** a previously made reservation for a day still ≥ 7 days away, **When** the
+   employee cancels it, **Then** the reservation is removed and the day returns to an
+   unbooked state with a confirmation shown.
 
 ---
 
@@ -125,7 +131,9 @@ then logging in as an employee and confirming the calendar shows the custom entr
 
 A logged-in employee submits a free-text suggestion from the dashboard. An email
 notification is sent to the configured CSE recipient address, and the employee sees
-a success or error flash message.
+a success or error flash message. There is no in-app suggestions management interface
+for staff; CSE staff review and manage suggestions via the Django admin interface
+(`/django-admin/`) if needed.
 
 **Why this priority**: Supports communication between employees and CSE management.
 Lower priority as it does not affect the core reservation workflow.
@@ -155,6 +163,14 @@ is sent (or logged in development) and the correct flash message is displayed.
   system displays an error flash message; no silent failure occurs.
 - What happens when a non-staff user attempts to access the admin summary URL directly?
   They are redirected to the dashboard with an error message.
+- What happens when an employee tries to reserve a day fewer than 7 days away (including
+  today)? The day is displayed as locked on the calendar; a server-side check rejects any
+  direct POST with an explicit error response.
+- What happens when an employee cancels a reservation? The record is deleted and the
+  day reverts to unbooked state; cancellation is only permitted for days ≥ 7 days away.
+- What happens when an employee forgets their password? There is no self-service reset
+  flow; the employee contacts a CSE staff member who resets the password via the Django
+  admin interface (`/django-admin/`).
 
 ## Requirements *(mandatory)*
 
@@ -162,16 +178,21 @@ is sent (or logged in development) and the correct flash message is displayed.
 
 - **FR-001**: System MUST allow employees to register with a unique matricule (format:
   one letter + six digits), first name, last name, CSE badge number, and a valid password.
+  The badge number MUST be stored on the user profile for reference; no validation against
+  an external badge or HR system is required.
 - **FR-002**: System MUST authenticate users by session; unauthenticated users MUST be
   redirected to the login page when accessing any protected resource.
 - **FR-003**: System MUST display a monthly calendar showing only working days
   (Monday–Friday) with the daily menu for each day.
-- **FR-004**: Employees MUST be able to select or update their meal option for any
-  upcoming working day; past dates MUST be locked from modification.
-- **FR-005**: System MUST save meal selections without a full page reload and confirm the
-  save to the user via an inline update.
-- **FR-006**: System MUST reject any attempt to create or modify a reservation for a past
-  date and return an explicit error response.
+- **FR-004**: Employees MUST be able to select, update, or cancel their meal option only
+  for working days that are at least 7 calendar days in the future; any day fewer than 7
+  days away (including today) and any past date MUST be locked from modification or
+  cancellation.
+- **FR-005**: System MUST save meal selections and cancellations without a full page
+  reload and confirm the action to the user via an inline update.
+- **FR-006**: System MUST reject any attempt to create or modify a reservation for a date
+  fewer than 7 calendar days in the future (including today or any past date) and return
+  an explicit error response.
 - **FR-007**: System MUST display a monthly admin summary table listing each employee's
   meal choice per working day, accessible only to CSE staff.
 - **FR-008**: CSE staff MUST be able to define the daily menu for each day of a chosen
@@ -185,17 +206,19 @@ is sent (or logged in development) and the correct flash message is displayed.
 ### Key Entities
 
 - **Employee (User)**: Represents a company employee identified by a unique matricule,
-  with first name, last name, and CSE badge number. A staff flag distinguishes CSE
-  administrators from regular employees.
+  with first name, last name, and CSE badge number (stored for reference only; not
+  validated externally). A staff flag distinguishes CSE administrators from regular
+  employees.
 - **Meal Reservation**: A single employee's meal choice for a specific working day.
-  Uniquely constrained to one record per employee per day; supports both creation and
-  update (upsert).
+  Uniquely constrained to one record per employee per day; supports creation, update
+  (upsert), and cancellation (deletion) — all restricted to days ≥ 7 calendar days away.
 - **Meal Option**: An active, selectable menu choice managed by CSE staff. The set of
   active options determines what employees can choose on the calendar.
 - **Daily Menu**: A custom menu entry created by CSE staff for a specific calendar day.
   Overrides the system default for that day in the employee-facing calendar.
 - **Suggestion**: A free-text message submitted by an employee from the dashboard,
-  triggering an email notification to the CSE recipient.
+  triggering an email notification to the CSE recipient. Suggestions are stored in the
+  database and managed via Django admin only; no in-app staff UI is provided.
 
 ## Success Criteria *(mandatory)*
 
@@ -225,7 +248,22 @@ is sent (or logged in development) and the correct flash message is displayed.
   and can be managed via the Django admin interface.
 - The CSE staff recipient email address for suggestions is configured once via an
   environment variable and does not change at runtime.
-- A default admin user account is created via a management command during initial
+- Reservations must be made at least 7 calendar days in advance to allow the restaurant
+  to plan meals and manage the catering budget; this window is enforced both in the UI
+  and server-side.
+- Self-service password reset is out of scope for this MVP; employees who forget their
+  password must contact a CSE staff member, who resets it via the Django admin interface.
+- The default admin user account is created via a management command during initial
   deployment to allow first-time CSE staff access.
 - The production database is PostgreSQL hosted externally and connected via the
   `DATABASE_URL` environment variable; SQLite is used for local development only.
+
+## Clarifications
+
+### Session 2026-06-01
+
+- Q: What is the CSE badge number used for after collection at registration? → A: Stored on the user profile for reference only; no validation against an external badge or HR system required.
+- Q: Is today bookable, or must reservations be made in advance? → A: Today is not bookable; reservations must be placed at least 7 calendar days in advance so the restaurant can plan meals and manage the catering budget.
+- Q: Can employees cancel a reservation after saving it? → A: Yes; employees can cancel (delete) a reservation for any day still ≥ 7 calendar days away; same advance window applies.
+- Q: Is there a self-service password reset flow? → A: No; password reset is staff-managed only via Django admin (`/django-admin/`); no self-service email reset in MVP.
+- Q: Should CSE staff be able to view and manage suggestions within the app? → A: No; email notification is the sole delivery channel; suggestions are stored and accessible via Django admin only; no in-app suggestions UI for staff.

@@ -1,8 +1,11 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.0.0 → 1.0.1
-Modified principles: Traduction intégrale en français — aucun changement sémantique
+Version change: 1.0.1 → 1.1.0
+Modified principles:
+  - §II last bullet: validation de choix de repas — LUNCH_OPTIONS (liste statique) remplacée
+    par MealOption.objects.filter(is_active=True) (modèle BDD actif) + rejet explicite HTTP 400
+  - Code Quality: suppression de la règle mandatant la liste LUNCH_OPTIONS dans views.py
 Added sections: Aucune
 Removed sections: Aucune
 Templates requiring updates:
@@ -48,9 +51,9 @@ internes.
   utilisateur et la même date.
 - La contrainte d'unicité `(user, lunch_date)` DOIT être maintenue au niveau du modèle
   Django ORM et répercutée dans les migrations.
-- Toutes les valeurs de choix fournies par l'utilisateur (ex. : options de repas) DOIVENT
-  être validées par rapport à la liste canonique `LUNCH_OPTIONS` avant persistance ;
-  les valeurs inconnues DOIVENT être rejetées.
+- Toutes les valeurs de choix de repas DOIVENT être validées par rapport aux enregistrements
+  `MealOption` actifs (`MealOption.objects.filter(is_active=True)`) ; les valeurs inconnues
+  DOIVENT être rejetées avec HTTP 400.
 
 **Justification** : Les données de réservation alimentent les prévisions de restauration ;
 les doublons ou les choix invalides entraîneraient des erreurs d'approvisionnement réelles
@@ -141,9 +144,6 @@ SQLite/PostgreSQL sans modification du code.
 - Les ajouts de complexité (nouveaux packages tiers, applications Django ou patterns
   architecturaux) DOIVENT être justifiés par rapport à la stack existante dans la
   description de la PR.
-- Les constantes d'options de repas DOIVENT être gérées exclusivement via la liste
-  `LUNCH_OPTIONS` dans `reservations/views.py` ; les chaînes d'options codées en dur
-  dispersées dans les vues ou les templates sont interdites.
 
 ## Gouvernance
 
@@ -167,4 +167,4 @@ les conventions Django existantes.
 Se référer au `README.md` du projet et à `COPILOT-INSTRUCTIONS.md` pour les conseils de
 développement au quotidien.
 
-**Version** : 1.0.1 | **Ratifiée** : 2026-05-17 | **Dernière modification** : 2026-05-17
+**Version** : 1.1.0 | **Ratifiée** : 2026-05-17 | **Dernière modification** : 2026-06-01

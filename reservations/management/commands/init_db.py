@@ -23,8 +23,11 @@ class Command(BaseCommand):
             self.stdout.write("Default admin user already exists.")
 
         alternatives = [
-            ("🥩 Steak haché", 50),
-            ("🍳 Omelette", 60),
+            ("🥗 Plat du jour", 10),
+            ("🐟 Poisson", 20),
+            ("🥩 Steak haché", 30),
+            ("🍳 Œufs brouillés", 40),
+            ("🍝 Pâtes", 50),
         ]
         for name, order in alternatives:
             MealOption.objects.update_or_create(

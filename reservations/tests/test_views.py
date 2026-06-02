@@ -6,7 +6,7 @@ from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 
-from reservations.models import DailyMenu, Lunch
+from reservations.models import DailyMenu, Lunch, MealOption, Suggestion, UserProfile
 
 
 class AuthFlowTests(TestCase):
@@ -28,6 +28,7 @@ class AuthFlowTests(TestCase):
 
         created_user = User.objects.get(username="K589479")
         self.assertTrue(created_user.check_password("A12345xy"))
+        self.assertTrue(UserProfile.objects.filter(user__username="K589479", badge_number="123456").exists())
 
     def test_register_rejects_invalid_identifier_format(self):
         response = self.client.post(
@@ -131,6 +132,7 @@ class AuthFlowTests(TestCase):
 class CalendarAndLunchTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="jane", password="secret123")
+        MealOption.objects.create(name="Plat du jour", is_active=True)
 
     def test_calendar_requires_authentication(self):
         response = self.client.get(reverse("calendar"))
@@ -139,7 +141,7 @@ class CalendarAndLunchTests(TestCase):
 
     def test_save_lunch_for_future_date_creates_or_updates_entry(self):
         self.client.login(username="jane", password="secret123")
-        future = date.today() + timedelta(days=1)
+        future = date.today() + timedelta(days=8)
 
         payload = {
             "day": future.day,
@@ -177,13 +179,14 @@ class CalendarAndLunchTests(TestCase):
         days = response.context["days"]
         self.assertTrue(all(day.get("lunch", "") == "" for day in days))
 
-    def test_calendar_exposes_two_alternative_options(self):
+    def test_calendar_options_come_from_meal_option_model(self):
         self.client.login(username="jane", password="secret123")
 
         response = self.client.get(reverse("calendar"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["alternative_options"], ["Poisson", "Œufs brouillés"])
+        self.assertIn("options", response.context)
+        self.assertEqual(list(response.context["options"]), ["Plat du jour"])
 
     def test_db_menu_overrides_default_for_specific_date(self):
         self.client.login(username="jane", password="secret123")
@@ -218,9 +221,28 @@ class CalendarAndLunchTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(Lunch.objects.filter(user=self.user, lunch_date=past).exists())
 
+    def test_save_lunch_within_7_days_returns_400(self):
+        self.client.login(username="jane", password="secret123")
+        near = date.today() + timedelta(days=3)
+
+        payload = {
+            "day": near.day,
+            "month": near.month,
+            "year": near.year,
+            "lunch": "Plat du jour",
+        }
+        response = self.client.post(
+            reverse("save_lunch"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Lunch.objects.filter(user=self.user, lunch_date=near).exists())
+
     def test_save_lunch_rejects_invalid_option(self):
         self.client.login(username="jane", password="secret123")
-        future = date.today() + timedelta(days=1)
+        future = date.today() + timedelta(days=8)
 
         payload = {
             "day": future.day,
@@ -235,6 +257,26 @@ class CalendarAndLunchTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+        self.assertFalse(Lunch.objects.filter(user=self.user, lunch_date=future).exists())
+
+    def test_save_lunch_cancellation_deletes_reservation(self):
+        self.client.login(username="jane", password="secret123")
+        future = date.today() + timedelta(days=8)
+        Lunch.objects.create(user=self.user, lunch_date=future, lunch_choice="Plat du jour")
+
+        payload = {
+            "day": future.day,
+            "month": future.month,
+            "year": future.year,
+            "lunch": "",
+        }
+        response = self.client.post(
+            reverse("save_lunch"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
         self.assertFalse(Lunch.objects.filter(user=self.user, lunch_date=future).exists())
 
 
@@ -323,6 +365,7 @@ class SuggestionTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, "Suggestion de K589479")
         self.assertIn("Ajouter un rappel sur le dashboard.", mail.outbox[0].body)
+        self.assertTrue(Suggestion.objects.filter(user=self.user, text="Ajouter un rappel sur le dashboard.").exists())
 
     def test_suggestion_requires_authentication(self):
         response = self.client.post(
