@@ -3,6 +3,9 @@
 {% block title %}Calendrier - Lunch Reservation{% endblock %}
 
 {% block content %}
+<style>
+.locked-day { opacity: 0.4; cursor: default; }
+</style>
 <div class="d-flex justify-content-between mb-3">
     {% if user.is_staff %}
     <a class="btn btn-outline-primary" href="{% url 'admin_summary' %}?year={{ year }}&month={{ month }}">Admin Page</a>
@@ -20,9 +23,9 @@
 <h2 class="text-center mb-4">{{ username }} - {{ month_name }} {{ year }}</h2>
 
 <div class="row g-2 mb-4">
-    {% for d in days %}
-    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" onclick="selectDay({{ d.day }})">
-        <div class="p-2 border rounded text-center h-100 selectable-day">
+{% for d in days %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" {% if not d.is_locked %}onclick="selectDay({{ d.day }})"{% endif %}>
+        <div class="p-2 border rounded text-center h-100 selectable-day {% if d.is_locked %}locked-day{% endif %}">
             <div>{{ d.day }}</div>
             {% if d.lunch %}
             <div class="small text-muted lunch-label">{{ d.lunch }}</div>
@@ -44,6 +47,7 @@
                 </select>
 
                 <button class="btn btn-success w-100 mb-2" onclick="saveLunch()">Enregistrer le repas</button>
+                <button class="btn btn-outline-danger w-100 mb-2" onclick="cancelLunch()">Annuler la réservation</button>
                 <p id="statusMsg" class="text-center small"></p>
             </div>
         </div>
@@ -54,7 +58,7 @@
 let selectedDay = null;
 const year = {{ year }};
 const month = {{ month }};
-const alternatives = {{ alternative_options|safe }};
+const options = {{ options|safe }};
 
 function getCookie(name) {
     let cookieValue = null;
@@ -87,21 +91,14 @@ function syncLunchOption(defaultMenu, existingLunch) {
     const select = document.getElementById('lunchOption');
     select.innerHTML = "<option value=\"\">-- Choisir un repas --</option>";
 
-    const uniqueOptions = [];
-    [defaultMenu, ...alternatives].forEach((value) => {
-        if (value && !uniqueOptions.includes(value)) {
-            uniqueOptions.push(value);
-        }
-    });
-
-    uniqueOptions.forEach((value) => {
+    options.forEach((value) => {
         const opt = document.createElement('option');
         opt.value = value;
         opt.textContent = value;
         select.appendChild(opt);
     });
 
-    select.value = uniqueOptions.includes(existingLunch) ? existingLunch : "";
+    select.value = options.includes(existingLunch) ? existingLunch : "";
 }
 
 async function saveLunch() {
@@ -135,6 +132,35 @@ async function saveLunch() {
         dayBox.appendChild(label);
     }
     label.innerText = lunch;
+}
+
+async function cancelLunch() {
+    if (!selectedDay) {
+        alert("Veuillez sélectionner un jour.");
+        return;
+    }
+
+    const response = await fetch("{% url 'save_lunch' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({ day: selectedDay, lunch: "", year, month })
+    });
+
+    const data = await response.json();
+    document.getElementById('statusMsg').innerText = data.message || data.status;
+
+    if (!response.ok) {
+        return;
+    }
+
+    const dayBox = document.querySelector(`#day-${selectedDay} .selectable-day`);
+    const label = dayBox.querySelector('.lunch-label');
+    if (label) {
+        label.remove();
+    }
 }
 </script>
 {% endblock %}

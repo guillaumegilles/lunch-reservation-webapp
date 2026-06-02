@@ -16,10 +16,9 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import LoginForm, RegisterForm, WeeklyMenuForm, SuggestionForm
-from .models import DailyMenu, Lunch
+from .models import DailyMenu, Lunch, MealOption, Suggestion, UserProfile
 
 DEFAULT_DAILY_MENU = "Plat du jour"
-CALENDAR_ALTERNATIVE_OPTIONS = ["Poisson", "Œufs brouillés"]
 
 WEEKDAY_MENUS = {
     0: "Lundi: 🥗 Plat du jour",
@@ -115,12 +114,13 @@ def register_view(request):
             messages.error(request, " ".join(exc.messages))
             return render(request, "register.html", {"form": form})
 
-        User.objects.create_user(
+        new_user = User.objects.create_user(
             username=identifier,
             first_name=first_name,
             last_name=last_name,
             password=password,
         )
+        UserProfile.objects.create(user=new_user, badge_number=badge_number)
         messages.success(request, "Compte créé. Vous pouvez vous connecter.")
         return redirect("login")
     else:
@@ -176,6 +176,7 @@ def calendar_view(request):
                 "weekday": current_date.strftime("%a"),
                 "menu": _menu_for_date(current_date, db_menus_by_day),
                 "lunch": lunches_by_day.get(d, ""),
+                "is_locked": current_date < date.today() + timedelta(days=7),
             }
         )
 
@@ -190,7 +191,7 @@ def calendar_view(request):
             "month": month,
             "month_name": month_name[month],
             "days": days,
-            "alternative_options": CALENDAR_ALTERNATIVE_OPTIONS,
+            "options": list(MealOption.objects.filter(is_active=True).values_list("name", flat=True)),
             "prev_month": prev_month,
             "next_month": next_month,
             "prev_year": prev_year,
@@ -210,19 +211,22 @@ def save_lunch(request):
     lunch = payload.get("lunch", "")
 
     lunch_date = date(year, month, day)
-    if lunch_date < date.today():
+    if lunch_date < date.today() + timedelta(days=7):
         return JsonResponse(
-            {"status": "error", "message": "Impossible de modifier un déjeuner passé."},
+            {"status": "error", "message": "Impossible de réserver moins de 7 jours à l'avance."},
             status=400,
         )
 
-    day_menu = DailyMenu.objects.filter(date=lunch_date).values_list("menu", flat=True).first() or DEFAULT_DAILY_MENU
-    allowed_choices = {day_menu, *CALENDAR_ALTERNATIVE_OPTIONS}
-    if lunch not in allowed_choices:
+    if lunch == "":
+        Lunch.objects.filter(user=request.user, lunch_date=lunch_date).delete()
+        return JsonResponse({"status": "success", "message": "Réservation annulée."})
+
+    valid_options = set(MealOption.objects.filter(is_active=True).values_list("name", flat=True))
+    if lunch not in valid_options:
         return JsonResponse(
             {
                 "status": "error",
-                "message": "Choix de repas invalide pour ce jour.",
+                "message": "Option de repas invalide.",
             },
             status=400,
         )
@@ -328,6 +332,7 @@ def submit_suggestion(request):
     form = SuggestionForm(request.POST)
     if form.is_valid():
         text = form.cleaned_data['text']
+        Suggestion.objects.create(user=request.user, text=text)
         subject = f"Suggestion de {request.user.username}"
         body = f"Utilisateur : {request.user.get_full_name()} ({request.user.username})\n\n{text}"
         try:

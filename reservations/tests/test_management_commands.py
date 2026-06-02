@@ -22,4 +22,19 @@ class InitDbCommandTests(TestCase):
 
         self.assertEqual(User.objects.filter(username=DEFAULT_ADMIN_USERNAME).count(), 1)
         self.assertEqual(MealOption.objects.filter(name="🥩 Steak haché").count(), 1)
-        self.assertEqual(MealOption.objects.filter(name="🍳 Omelette").count(), 1)
+
+    def test_init_db_seeds_default_meal_options(self):
+        call_command("init_db")
+
+        self.assertGreaterEqual(MealOption.objects.filter(is_active=True).count(), 5)
+        self.assertTrue(MealOption.objects.filter(name__startswith="🥗").exists())
+        self.assertTrue(MealOption.objects.filter(name__startswith="🐟").exists())
+        self.assertTrue(MealOption.objects.filter(name__startswith="🥩").exists())
+        self.assertTrue(MealOption.objects.filter(name__startswith="🍳").exists())
+        self.assertTrue(MealOption.objects.filter(name__startswith="🍝").exists())
+
+        # Verify idempotency: call init_db twice, count must not grow
+        count_after_first = MealOption.objects.count()
+        call_command("init_db")
+        count_after_second = MealOption.objects.count()
+        self.assertEqual(count_after_first, count_after_second)

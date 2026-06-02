@@ -48,7 +48,7 @@ python manage.py shell -c "from django.contrib.auth.models import User; User.obj
 
 ## Key Conventions
 
-- **Lunch options** are defined as `LUNCH_OPTIONS` list constant in `reservations/views.py`.
+- **Meal options** are managed via `MealOption` model records (`name`, `is_active`, `order`). Active options are fetched with `MealOption.objects.filter(is_active=True)`.
 - **Admin check** is `request.user.is_staff` in views; `{% if request.user.is_staff %}` in templates.
 - **Past date guard** — `save_lunch` rejects dates before today with a 400 JSON error (server-side only).
 - **`/save-lunch/`** is a JSON POST endpoint. The JS in `calendar.html` sends `X-CSRFToken` in the request header — required for all non-GET AJAX calls.
