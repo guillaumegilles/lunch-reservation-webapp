@@ -1,29 +1,29 @@
 {% extends 'base.html' %}
 
-{% block title %}Calendrier - Lunch Reservation{% endblock %}
+{% block title %}{{ username }} - {{ month_name_fr }} {{ year }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between mb-3">
     {% if user.is_staff %}
-    <a class="btn btn-outline-primary" href="{% url 'admin_summary' %}?year={{ year }}&month={{ month }}">Admin Page</a>
+    <a class="btn btn-outline-primary" href="{% url 'admin_summary' %}?year={{ year }}&month={{ month }}">Page Admin</a>
     {% else %}
     <span></span>
     {% endif %}
     <div>
-        <a class="btn btn-primary" href="{% url 'calendar' %}?year={{ prev_year }}&month={{ prev_month }}">&larr; Previous</a>
-        <a class="btn btn-primary" href="{% url 'calendar' %}?year={{ next_year }}&month={{ next_month }}">Next &rarr;</a>
-        <a class="btn btn-outline-primary" href="{% url 'dashboard' %}">Dashboard</a>
-        <a class="btn btn-outline-secondary" href="{% url 'logout' %}">Logout</a>
+        <a class="btn btn-primary" href="{% url 'calendar' %}?year={{ prev_year }}&month={{ prev_month }}">&larr; Précédent</a>
+        <a class="btn btn-primary" href="{% url 'calendar' %}?year={{ next_year }}&month={{ next_month }}">Suivant &rarr;</a>
+        <a class="btn btn-outline-primary" href="{% url 'dashboard' %}">Tableau de bord</a>
+        <a class="btn btn-outline-secondary" href="{% url 'logout' %}">Déconnexion</a>
     </div>
 </div>
 
-<h2 class="text-center mb-4">{{ username }} - {{ month_name }} {{ year }}</h2>
+<h2 class="text-center mb-4">{{ username }} - {{ month_name_fr }} {{ year }}</h2>
 
 <div class="row g-2 mb-4">
 {% for d in days %}
-    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" {% if not d.is_locked %}onclick="selectDay({{ d.day }})"{% endif %}>
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-full-label="{{ d.full_label|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" {% if not d.is_locked %}onclick="selectDay({{ d.day }})"{% endif %}>
         <div class="p-2 border rounded text-center h-100 selectable-day {% if d.is_locked %}locked-day{% endif %}">
-            <div>{{ d.day }}</div>
+            <div>{{ d.full_label }}</div>
             {% if d.lunch %}
             <div class="small text-muted lunch-label">{{ d.lunch }}</div>
             {% endif %}
@@ -36,7 +36,7 @@
     <div class="col-12 col-md-8 col-lg-6 col-xl-4">
         <div class="card shadow-sm calendar-selection-card">
             <div class="card-body text-center">
-                <h4>Selection du jour</h4>
+                <h4>Sélection du jour</h4>
                 <p id="selectedDay">Aucun jour sélectionné</p>
 
                 <select id="lunchOption" class="form-select mb-3">
@@ -79,12 +79,12 @@ function selectDay(day) {
     el.classList.add('bg-primary', 'text-white');
 
     selectedDay = day;
-    syncLunchOption(dayContainer.dataset.menu, dayContainer.dataset.lunch);
-    document.getElementById('selectedDay').innerText = "Jour " + day;
+    syncLunchOption(dayContainer.dataset.lunch);
+    document.getElementById('selectedDay').innerText = dayContainer.dataset.fullLabel;
     document.getElementById('statusMsg').innerText = "";
 }
 
-function syncLunchOption(defaultMenu, existingLunch) {
+function syncLunchOption(existingLunch) {
     const select = document.getElementById('lunchOption');
     select.innerHTML = "<option value=\"\">-- Choisir un repas --</option>";
 

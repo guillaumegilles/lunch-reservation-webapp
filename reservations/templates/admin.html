@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
 
-{% block title %}Admin Summary - Lunch Reservation{% endblock %}
+{% block title %}Récapitulatif mensuel - {{ month_name_fr }} {{ year }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between mb-3">
-    <a class="btn btn-primary" href="{% url 'admin_summary' %}?year={{ prev_year }}&month={{ prev_month }}">&larr; Previous</a>
-    <h3>Admin Summary - {{ month_name }} {{ year }}</h3>
-    <a class="btn btn-primary" href="{% url 'admin_summary' %}?year={{ next_year }}&month={{ next_month }}">Next &rarr;</a>
+    <a class="btn btn-primary" href="{% url 'admin_summary' %}?year={{ prev_year }}&month={{ prev_month }}">&larr; Précédent</a>
+    <h3>Récapitulatif mensuel - {{ month_name_fr }} {{ year }}</h3>
+    <a class="btn btn-primary" href="{% url 'admin_summary' %}?year={{ next_year }}&month={{ next_month }}">Suivant &rarr;</a>
 </div>
 
-<a class="btn btn-outline-secondary mb-3" href="{% url 'calendar' %}">Back</a>
+<a class="btn btn-outline-secondary mb-3" href="{% url 'calendar' %}">Retour</a>
 
 <div class="card mb-4">
     <div class="card-body">
@@ -40,7 +40,7 @@
     <table class="table table-bordered table-striped">
         <thead class="table-light">
             <tr>
-                <th>User</th>
+                <th>Employé</th>
                 {% for d in days %}
                 <th>{{ d }}</th>
                 {% endfor %}

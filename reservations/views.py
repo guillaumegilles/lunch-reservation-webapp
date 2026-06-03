@@ -1,5 +1,5 @@
 import json
-from calendar import month_name, monthrange
+from calendar import monthrange
 from datetime import date, timedelta
 
 from django.conf import settings
@@ -20,6 +20,31 @@ from .models import DailyMenu, Lunch, MealOption, Suggestion, UserProfile
 
 DEFAULT_DAILY_MENU = "Plat du jour"
 
+FRENCH_WEEKDAY_NAMES = {
+    0: "Lundi",
+    1: "Mardi",
+    2: "Mercredi",
+    3: "Jeudi",
+    4: "Vendredi",
+    5: "Samedi",
+    6: "Dimanche",
+}
+
+FRENCH_MONTH_NAMES = {
+    1: "janvier",
+    2: "février",
+    3: "mars",
+    4: "avril",
+    5: "mai",
+    6: "juin",
+    7: "juillet",
+    8: "août",
+    9: "septembre",
+    10: "octobre",
+    11: "novembre",
+    12: "décembre",
+}
+
 WEEKDAY_MENUS = {
     0: "Lundi: 🥗 Plat du jour",
     1: "Mardi: 🐟 Poisson",
@@ -38,6 +63,18 @@ def _month_navigation(year, month):
     if next_month == 13:
         next_month, next_year = 1, year + 1
     return prev_year, prev_month, next_year, next_month
+
+
+def _weekday_name_fr(current_date):
+    return FRENCH_WEEKDAY_NAMES[current_date.weekday()]
+
+
+def _month_name_fr(month):
+    return FRENCH_MONTH_NAMES[month]
+
+
+def _full_date_label(current_date):
+    return f"{_weekday_name_fr(current_date)} {current_date.day} {_month_name_fr(current_date.month)}"
 
 
 def _menu_for_date(current_date, db_menus=None):
@@ -165,6 +202,7 @@ def calendar_view(request):
     db_menus_by_day = {m.date.day: m.menu for m in db_menus_qs}
 
     num_days = monthrange(year, month)[1]
+    month_name_fr = _month_name_fr(month)
     days = []
     for d in range(1, num_days + 1):
         current_date = date(year, month, d)
@@ -173,7 +211,9 @@ def calendar_view(request):
         days.append(
             {
                 "day": d,
-                "weekday": current_date.strftime("%a"),
+                "weekday_label": _weekday_name_fr(current_date),
+                "month_name_fr": month_name_fr,
+                "full_label": _full_date_label(current_date),
                 "menu": _menu_for_date(current_date, db_menus_by_day),
                 "lunch": lunches_by_day.get(d, ""),
                 "is_locked": current_date < date.today() + timedelta(days=7),
@@ -181,6 +221,7 @@ def calendar_view(request):
         )
 
     prev_year, prev_month, next_year, next_month = _month_navigation(year, month)
+    month_name_fr = _month_name_fr(month)
 
     return render(
         request,
@@ -189,7 +230,8 @@ def calendar_view(request):
             "username": request.user.username,
             "year": year,
             "month": month,
-            "month_name": month_name[month],
+            "month_name": month_name_fr,
+            "month_name_fr": month_name_fr,
             "days": days,
             "options": list(MealOption.objects.filter(is_active=True).values_list("name", flat=True)),
             "prev_month": prev_month,
@@ -307,6 +349,7 @@ def admin_summary(request):
     ]
 
     prev_year, prev_month, next_year, next_month = _month_navigation(year, month)
+    month_name_fr = _month_name_fr(month)
 
     return render(
         request,
@@ -316,7 +359,8 @@ def admin_summary(request):
             "days": days,
             "year": year,
             "month": month,
-            "month_name": month_name[month],
+            "month_name": month_name_fr,
+            "month_name_fr": month_name_fr,
             "prev_month": prev_month,
             "next_month": next_month,
             "prev_year": prev_year,

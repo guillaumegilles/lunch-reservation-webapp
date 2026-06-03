@@ -350,6 +350,12 @@ a:focus-visible {
     transition: border-color var(--transition-fast), transform var(--transition-fast);
 }
 
+.calendar-day .selectable-day > div:first-child {
+    font-size: var(--font-size-sm);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
 .selectable-day:hover {
     border-color: var(--color-accent);
     transform: translateY(-1px);
