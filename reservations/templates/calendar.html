@@ -21,8 +21,8 @@
 
 <div class="row g-2 mb-4">
 {% for d in days %}
-    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-full-label="{{ d.full_label|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" {% if not d.is_locked %}onclick="selectDay({{ d.day }})"{% endif %}>
-        <div class="p-2 border rounded text-center h-100 selectable-day {% if d.is_locked %}locked-day{% endif %}">
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-full-label="{{ d.full_label|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" data-default-option="{{ d.default_option|escape }}" data-rating="{{ d.rating|default_if_none:'' }}" data-can-reserve="{{ d.can_reserve|yesno:'true,false' }}" data-can-rate="{{ d.can_rate|yesno:'true,false' }}" {% if d.can_reserve or d.can_rate %}onclick="selectDay({{ d.day }})"{% endif %}>
+        <div class="p-2 border rounded text-center h-100 selectable-day {% if not d.can_reserve and not d.can_rate %}locked-day{% endif %}">
             <div>{{ d.full_label }}</div>
             {% if d.lunch %}
             <div class="small text-muted lunch-label">{{ d.lunch }}</div>
@@ -38,13 +38,23 @@
             <div class="card-body text-center">
                 <h4>Sélection du jour</h4>
                 <p id="selectedDay">Aucun jour sélectionné</p>
+                <p id="selectedLunch" class="text-muted small"></p>
 
-                <select id="lunchOption" class="form-select mb-3">
-                    <option value="">-- Choisir un repas --</option>
-                </select>
+                <div id="reservationSection">
+                    <select id="lunchOption" class="form-select mb-3">
+                        <option value="">-- Choisir un repas --</option>
+                    </select>
 
-                <button class="btn btn-success w-100 mb-2" onclick="saveLunch()">Enregistrer le repas</button>
-                <button class="btn btn-outline-danger w-100 mb-2" onclick="cancelLunch()">Annuler la réservation</button>
+                    <button id="saveLunchButton" class="btn btn-success w-100 mb-2" onclick="saveLunch()">Enregistrer le repas</button>
+                    <button id="cancelLunchButton" class="btn btn-outline-danger w-100 mb-2" onclick="cancelLunch()">Annuler la réservation</button>
+                </div>
+
+                <div id="ratingSection" class="mt-4 d-none">
+                    <h5>Noter ce repas</h5>
+                    <div id="ratingStars" class="rating-stars mb-2"></div>
+                    <p id="ratingStatus" class="small text-muted mb-2"></p>
+                </div>
+
                 <p id="statusMsg" class="text-center small"></p>
             </div>
         </div>
@@ -72,6 +82,10 @@ function getCookie(name) {
     return cookieValue;
 }
 
+function canRateDay(dayContainer) {
+    return dayContainer.dataset.canRate === "true";
+}
+
 function selectDay(day) {
     document.querySelectorAll('.selectable-day').forEach(el => el.classList.remove('bg-primary', 'text-white'));
     const dayContainer = document.getElementById(`day-${day}`);
@@ -79,12 +93,38 @@ function selectDay(day) {
     el.classList.add('bg-primary', 'text-white');
 
     selectedDay = day;
-    syncLunchOption(dayContainer.dataset.lunch);
+    const existingLunch = dayContainer.dataset.lunch;
+    const defaultOption = dayContainer.dataset.defaultOption;
+    const canReserve = dayContainer.dataset.canReserve === "true";
+    const canRate = canRateDay(dayContainer);
+    const existingRating = dayContainer.dataset.rating ? parseInt(dayContainer.dataset.rating, 10) : 0;
+
     document.getElementById('selectedDay').innerText = dayContainer.dataset.fullLabel;
+    document.getElementById('selectedLunch').innerText = existingLunch ? `Repas enregistré : ${existingLunch}` : "Aucune réservation enregistrée.";
     document.getElementById('statusMsg').innerText = "";
+
+    toggleReservationSection(canReserve);
+    toggleRatingSection(canRate, existingRating);
+    syncLunchOption(existingLunch, defaultOption);
 }
 
-function syncLunchOption(existingLunch) {
+function toggleReservationSection(show) {
+    const reservationSection = document.getElementById('reservationSection');
+    reservationSection.classList.toggle('d-none', !show);
+}
+
+function toggleRatingSection(show, currentRating) {
+    const ratingSection = document.getElementById('ratingSection');
+    ratingSection.classList.toggle('d-none', !show);
+    if (!show) {
+        document.getElementById('ratingStars').innerHTML = "";
+        document.getElementById('ratingStatus').innerText = "";
+        return;
+    }
+    renderRatingStars(currentRating);
+}
+
+function syncLunchOption(existingLunch, defaultOption) {
     const select = document.getElementById('lunchOption');
     select.innerHTML = "<option value=\"\">-- Choisir un repas --</option>";
 
@@ -95,7 +135,24 @@ function syncLunchOption(existingLunch) {
         select.appendChild(opt);
     });
 
-    select.value = options.includes(existingLunch) ? existingLunch : "";
+    select.value = options.includes(existingLunch) ? existingLunch : (options.includes(defaultOption) ? defaultOption : "");
+}
+
+function renderRatingStars(currentRating) {
+    const container = document.getElementById('ratingStars');
+    container.innerHTML = "";
+
+    for (let rating = 1; rating <= 5; rating++) {
+        const button = document.createElement('button');
+        button.type = "button";
+        button.className = `rating-star ${rating <= currentRating ? "is-selected" : ""}`;
+        button.setAttribute("aria-label", `${rating} étoile${rating > 1 ? "s" : ""}`);
+        button.innerText = rating <= currentRating ? "★" : "☆";
+        button.addEventListener("click", () => saveMealRating(rating));
+        container.appendChild(button);
+    }
+
+    document.getElementById('ratingStatus').innerText = currentRating ? `Note actuelle : ${currentRating}/5` : "Aucune note enregistrée.";
 }
 
 async function saveLunch() {
@@ -121,7 +178,8 @@ async function saveLunch() {
         return;
     }
 
-    const dayBox = document.querySelector(`#day-${selectedDay} .selectable-day`);
+    const dayContainer = document.getElementById(`day-${selectedDay}`);
+    const dayBox = dayContainer.querySelector('.selectable-day');
     let label = dayBox.querySelector('.lunch-label');
     if (!label) {
         label = document.createElement('div');
@@ -129,6 +187,40 @@ async function saveLunch() {
         dayBox.appendChild(label);
     }
     label.innerText = lunch;
+    dayContainer.dataset.lunch = lunch;
+    document.getElementById('selectedLunch').innerText = `Repas enregistré : ${lunch}`;
+}
+
+async function saveMealRating(rating) {
+    if (!selectedDay) {
+        alert("Veuillez sélectionner un jour.");
+        return;
+    }
+
+    const dayContainer = document.getElementById(`day-${selectedDay}`);
+    if (!dayContainer || dayContainer.dataset.canRate !== "true") {
+        alert("La notation est réservée aux repas passés.");
+        return;
+    }
+
+    const response = await fetch("{% url 'save_meal_rating' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({ day: selectedDay, month, year, rating })
+    });
+
+    const data = await response.json();
+    document.getElementById('statusMsg').innerText = data.message || data.status;
+
+    if (!response.ok) {
+        return;
+    }
+
+    dayContainer.dataset.rating = String(rating);
+    renderRatingStars(rating);
 }
 
 async function cancelLunch() {
@@ -158,6 +250,8 @@ async function cancelLunch() {
     if (label) {
         label.remove();
     }
+    dayBox.parentElement.dataset.lunch = "";
+    document.getElementById('selectedLunch').innerText = "Aucune réservation enregistrée.";
 }
 </script>
 {% endblock %}

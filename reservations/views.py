@@ -16,7 +16,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import LoginForm, RegisterForm, WeeklyMenuForm, SuggestionForm
-from .models import DailyMenu, Lunch, MealOption, Suggestion, UserProfile
+from .models import DailyMenu, Lunch, MealOption, MealRating, Suggestion, UserProfile
 
 DEFAULT_DAILY_MENU = "Plat du jour"
 
@@ -81,6 +81,16 @@ def _menu_for_date(current_date, db_menus=None):
     if db_menus and current_date.day in db_menus:
         return db_menus[current_date.day]
     return DEFAULT_DAILY_MENU
+
+
+def _default_meal_option(menu_label, active_options):
+    if menu_label and menu_label in active_options:
+        return menu_label
+    return active_options[0] if active_options else ""
+
+
+def _calendar_date(year, month, day):
+    return date(year, month, day)
 
 
 def index(request):
@@ -195,30 +205,41 @@ def calendar_view(request):
         user=request.user,
         lunch_date__year=year,
         lunch_date__month=month,
-    )
-    lunches_by_day = {l.lunch_date.day: l.lunch_choice for l in lunches_qs}
+    ).select_related("user")
+    lunches_by_day = {l.lunch_date.day: l for l in lunches_qs}
+
+    ratings_by_lunch_id = {
+       rating.lunch_id: rating.rating
+       for rating in MealRating.objects.filter(lunch__in=lunches_qs)
+    }
 
     db_menus_qs = DailyMenu.objects.filter(date__year=year, date__month=month)
     db_menus_by_day = {m.date.day: m.menu for m in db_menus_qs}
+    active_options = list(MealOption.objects.filter(is_active=True).values_list("name", flat=True))
 
     num_days = monthrange(year, month)[1]
     month_name_fr = _month_name_fr(month)
     days = []
     for d in range(1, num_days + 1):
-        current_date = date(year, month, d)
-        if current_date.weekday() >= 5:
-            continue
-        days.append(
-            {
-                "day": d,
-                "weekday_label": _weekday_name_fr(current_date),
-                "month_name_fr": month_name_fr,
-                "full_label": _full_date_label(current_date),
-                "menu": _menu_for_date(current_date, db_menus_by_day),
-                "lunch": lunches_by_day.get(d, ""),
-                "is_locked": current_date < date.today() + timedelta(days=7),
-            }
-        )
+       current_date = date(year, month, d)
+       if current_date.weekday() >= 5:
+           continue
+       lunch = lunches_by_day.get(d)
+       menu_label = _menu_for_date(current_date, db_menus_by_day)
+       days.append(
+           {
+               "day": d,
+               "weekday_label": _weekday_name_fr(current_date),
+               "month_name_fr": month_name_fr,
+               "full_label": _full_date_label(current_date),
+               "menu": menu_label,
+               "lunch": lunch.lunch_choice if lunch else "",
+               "default_option": _default_meal_option(menu_label, active_options),
+               "rating": ratings_by_lunch_id.get(lunch.id) if lunch else None,
+               "can_reserve": current_date >= today + timedelta(days=7),
+               "can_rate": current_date < today and lunch is not None,
+           }
+       )
 
     prev_year, prev_month, next_year, next_month = _month_navigation(year, month)
     month_name_fr = _month_name_fr(month)
@@ -233,7 +254,7 @@ def calendar_view(request):
             "month_name": month_name_fr,
             "month_name_fr": month_name_fr,
             "days": days,
-            "options": list(MealOption.objects.filter(is_active=True).values_list("name", flat=True)),
+            "options": active_options,
             "prev_month": prev_month,
             "next_month": next_month,
             "prev_year": prev_year,
@@ -245,7 +266,10 @@ def calendar_view(request):
 @require_POST
 @login_required
 def save_lunch(request):
-    payload = json.loads(request.body.decode("utf-8"))
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Requête JSON invalide."}, status=400)
 
     day = int(payload.get("day"))
     month = int(payload.get("month"))
@@ -280,6 +304,47 @@ def save_lunch(request):
     )
 
     return JsonResponse({"status": "success", "message": "Déjeuner enregistré."})
+
+
+@require_POST
+@login_required
+def save_meal_rating(request):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Requête JSON invalide."}, status=400)
+
+    try:
+        day = int(payload.get("day"))
+        month = int(payload.get("month"))
+        year = int(payload.get("year"))
+        rating = int(payload.get("rating"))
+    except (TypeError, ValueError):
+        return JsonResponse({"status": "error", "message": "Note invalide."}, status=400)
+
+    if rating < 1 or rating > 5:
+        return JsonResponse({"status": "error", "message": "Note invalide."}, status=400)
+
+    rating_date = _calendar_date(year, month, day)
+    if rating_date >= date.today():
+        return JsonResponse(
+            {"status": "error", "message": "La notation est réservée aux repas passés."},
+            status=400,
+        )
+
+    lunch = Lunch.objects.filter(user=request.user, lunch_date=rating_date).first()
+    if lunch is None:
+        return JsonResponse(
+            {"status": "error", "message": "Aucune réservation trouvée pour cette date."},
+            status=400,
+        )
+
+    MealRating.objects.update_or_create(
+        lunch=lunch,
+        defaults={"rating": rating},
+    )
+
+    return JsonResponse({"status": "success", "message": "Note enregistrée."})
 
 
 @login_required
@@ -331,19 +396,46 @@ def admin_summary(request):
                     return redirect(f"{reverse('admin_summary')}?year={summary_year}&month={summary_month}")
                 return redirect(f"{reverse('admin_summary')}?year={start.year}&month={start.month}")
 
-    rows = Lunch.objects.filter(lunch_date__year=year, lunch_date__month=month).select_related("user")
+    rows = list(Lunch.objects.filter(lunch_date__year=year, lunch_date__month=month).select_related("user"))
+    ratings_by_lunch_id = {rating.lunch_id: rating.rating for rating in MealRating.objects.filter(lunch__in=rows)}
 
     data = {}
     for row in rows:
-        data.setdefault(row.user.username, {})[row.lunch_date.day] = row.lunch_choice
+        data.setdefault(row.user.username, {})[row.lunch_date.day] = row
 
     users = sorted(data.keys())
     num_days = monthrange(year, month)[1]
     days = [d for d in range(1, num_days + 1) if date(year, month, d).weekday() < 5]
+
+    daily_rating_summary = []
+    for day in days:
+        day_ratings = [ratings_by_lunch_id[row.id] for row in rows if row.lunch_date.day == day and row.id in ratings_by_lunch_id]
+        if day_ratings:
+            average_rating = round(sum(day_ratings) / len(day_ratings), 1)
+            average_display = f"★ {average_rating} / 5"
+        else:
+            average_rating = None
+            average_display = "Non noté"
+        daily_rating_summary.append(
+            {
+                "day": day,
+                "average_rating": average_rating,
+                "average_display": average_display,
+            }
+        )
+
     table_rows = [
         {
             "username": username,
-            "choices": [data.get(username, {}).get(day, "-") for day in days],
+            "cells": [
+                {
+                    "choice": user_day.lunch_choice,
+                    "rating": ratings_by_lunch_id.get(user_day.id),
+                }
+                if (user_day := data.get(username, {}).get(day)) is not None
+                else {"choice": "-", "rating": None}
+                for day in days
+            ],
         }
         for username in users
     ]
@@ -357,6 +449,7 @@ def admin_summary(request):
         {
             "table_rows": table_rows,
             "days": days,
+            "daily_rating_summary": daily_rating_summary,
             "year": year,
             "month": month,
             "month_name": month_name_fr,

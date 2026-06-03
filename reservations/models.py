@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -36,6 +37,19 @@ class Lunch(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.lunch_date} - {self.lunch_choice}"
+
+
+class MealRating(models.Model):
+    lunch = models.OneToOneField(Lunch, on_delete=models.CASCADE, related_name="meal_rating")
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"{self.lunch.user.username} - {self.lunch.lunch_date} - {self.rating}/5"
 
 
 class UserProfile(models.Model):

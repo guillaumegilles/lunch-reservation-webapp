@@ -380,6 +380,34 @@ a:focus-visible {
     pointer-events: none;
 }
 
+/* === 9b. RATING WIDGET ================================================= */
+
+.rating-stars {
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.rating-star {
+    background: transparent;
+    border: 0;
+    color: var(--color-primary);
+    font-size: 1.75rem;
+    line-height: 1;
+    padding: 0 0.15rem;
+    transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.rating-star:hover,
+.rating-star:focus-visible {
+    color: var(--color-primary-dark);
+    transform: scale(1.08);
+}
+
+.rating-star.is-selected {
+    color: var(--color-accent);
+}
+
 /* === 10. RESPONSIVE ===================================================== */
 
 /* Mobile tier (FR-008) — SC-003: 44px minimum tap target */
