@@ -3,9 +3,6 @@
 {% block title %}Calendrier - Lunch Reservation{% endblock %}
 
 {% block content %}
-<style>
-.locked-day { opacity: 0.4; cursor: default; }
-</style>
 <div class="d-flex justify-content-between mb-3">
     {% if user.is_staff %}
     <a class="btn btn-outline-primary" href="{% url 'admin_summary' %}?year={{ year }}&month={{ month }}">Admin Page</a>
