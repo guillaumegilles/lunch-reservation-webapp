@@ -45,13 +45,28 @@
                 <th>{{ d }}</th>
                 {% endfor %}
             </tr>
+            <tr>
+                <th>Note moyenne</th>
+                {% for summary in daily_rating_summary %}
+                <th>{{ summary.average_display }}</th>
+                {% endfor %}
+            </tr>
         </thead>
         <tbody>
             {% for row in table_rows %}
             <tr>
                 <th>{{ row.username }}</th>
-                {% for choice in row.choices %}
-                <td>{{ choice }}</td>
+                {% for cell in row.cells %}
+                <td>
+                    <div>{{ cell.choice }}</div>
+                    <div class="small text-muted">
+                        {% if cell.rating %}
+                        ★ {{ cell.rating }}/5
+                        {% else %}
+                        -
+                        {% endif %}
+                    </div>
+                </td>
                 {% endfor %}
             </tr>
             {% endfor %}

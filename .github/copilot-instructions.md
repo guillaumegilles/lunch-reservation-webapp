@@ -60,5 +60,5 @@ python manage.py shell -c "from django.contrib.auth.models import User; User.obj
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/003-calendar-full-date-display/plan.md`.
+at `specs/004-june-meals-rating/plan.md`.
 <!-- SPECKIT END -->

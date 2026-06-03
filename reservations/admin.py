@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 
-from .models import DailyMenu, Lunch, MealOption, Suggestion, UserProfile
+from .models import DailyMenu, Lunch, MealOption, MealRating, Suggestion, UserProfile
 
 
 class UserProfileInline(admin.StackedInline):
@@ -37,6 +37,13 @@ class LunchAdmin(admin.ModelAdmin):
     list_display = ("user", "lunch_date", "lunch_choice")
     list_filter = ("lunch_date", "user")
     search_fields = ("user__username", "lunch_choice")
+
+
+@admin.register(MealRating)
+class MealRatingAdmin(admin.ModelAdmin):
+    list_display = ("lunch", "rating", "created_at", "updated_at")
+    list_filter = ("rating", "created_at", "updated_at")
+    search_fields = ("lunch__user__username", "lunch__lunch_choice")
 
 
 @admin.register(Suggestion)

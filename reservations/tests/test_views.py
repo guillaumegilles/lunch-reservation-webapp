@@ -6,7 +6,7 @@ from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 
-from reservations.models import DailyMenu, Lunch, MealOption, Suggestion, UserProfile
+from reservations.models import DailyMenu, Lunch, MealOption, MealRating, Suggestion, UserProfile
 
 
 class AuthFlowTests(TestCase):
@@ -188,6 +188,39 @@ class CalendarAndLunchTests(TestCase):
         self.assertIn("options", response.context)
         self.assertEqual(list(response.context["options"]), ["Plat du jour"])
 
+    def test_calendar_prefers_matching_daily_menu_option(self):
+        self.client.login(username="jane", password="secret123")
+        matching_label = "Poulet rôti aux herbes"
+        MealOption.objects.create(name=matching_label, is_active=True, order=1)
+        MealOption.objects.create(name="Poisson du jour", is_active=True, order=2)
+        future = date.today() + timedelta(days=14)
+        DailyMenu.objects.create(date=future, menu=matching_label)
+
+        response = self.client.get(
+            reverse("calendar"),
+            {"year": future.year, "month": future.month},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        days = {d["day"]: d for d in response.context["days"]}
+        self.assertEqual(days[future.day]["default_option"], matching_label)
+
+    def test_calendar_falls_back_to_first_active_option_when_menu_does_not_match(self):
+        self.client.login(username="jane", password="secret123")
+        MealOption.objects.create(name="Menu de secours", is_active=True, order=1)
+        MealOption.objects.create(name="Poisson du jour", is_active=True, order=2)
+        future = date.today() + timedelta(days=14)
+        DailyMenu.objects.create(date=future, menu="Menu fantaisie sans correspondance")
+
+        response = self.client.get(
+            reverse("calendar"),
+            {"year": future.year, "month": future.month},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        days = {d["day"]: d for d in response.context["days"]}
+        self.assertEqual(days[future.day]["default_option"], "Plat du jour")
+
     def test_db_menu_overrides_default_for_specific_date(self):
         self.client.login(username="jane", password="secret123")
         future = date.today() + timedelta(days=1)
@@ -201,6 +234,22 @@ class CalendarAndLunchTests(TestCase):
         self.assertEqual(response.status_code, 200)
         days = {d["day"]: d for d in response.context["days"]}
         self.assertEqual(days[future.day]["menu"], "🍱 Menu spécial test")
+
+    def test_calendar_exposes_existing_rating_for_past_lunch(self):
+        self.client.login(username="jane", password="secret123")
+        past = date.today() - timedelta(days=2)
+        lunch = Lunch.objects.create(user=self.user, lunch_date=past, lunch_choice="Plat du jour")
+        MealRating.objects.create(lunch=lunch, rating=4)
+
+        response = self.client.get(
+            reverse("calendar"),
+            {"year": past.year, "month": past.month},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        days = {d["day"]: d for d in response.context["days"]}
+        self.assertEqual(days[past.day]["rating"], 4)
+        self.assertTrue(days[past.day]["can_rate"])
 
     def test_save_lunch_for_past_date_returns_400(self):
         self.client.login(username="jane", password="secret123")
@@ -279,6 +328,46 @@ class CalendarAndLunchTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Lunch.objects.filter(user=self.user, lunch_date=future).exists())
 
+    def test_save_meal_rating_creates_and_overwrites_rating(self):
+        self.client.login(username="jane", password="secret123")
+        past = date.today() - timedelta(days=2)
+        lunch = Lunch.objects.create(user=self.user, lunch_date=past, lunch_choice="Plat du jour")
+
+        response = self.client.post(
+            reverse("save_meal_rating"),
+            data=json.dumps({"day": past.day, "month": past.month, "year": past.year, "rating": 3}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(MealRating.objects.get(lunch=lunch).rating, 3)
+
+        update_response = self.client.post(
+            reverse("save_meal_rating"),
+            data=json.dumps({"day": past.day, "month": past.month, "year": past.year, "rating": 5}),
+            content_type="application/json",
+        )
+        self.assertEqual(update_response.status_code, 200)
+        self.assertEqual(MealRating.objects.get(lunch=lunch).rating, 5)
+
+    def test_save_meal_rating_rejects_today_or_without_reservation(self):
+        self.client.login(username="jane", password="secret123")
+        today = date.today()
+
+        today_response = self.client.post(
+            reverse("save_meal_rating"),
+            data=json.dumps({"day": today.day, "month": today.month, "year": today.year, "rating": 4}),
+            content_type="application/json",
+        )
+        self.assertEqual(today_response.status_code, 400)
+
+        past = date.today() - timedelta(days=3)
+        missing_response = self.client.post(
+            reverse("save_meal_rating"),
+            data=json.dumps({"day": past.day, "month": past.month, "year": past.year, "rating": 4}),
+            content_type="application/json",
+        )
+        self.assertEqual(missing_response.status_code, 400)
+
 
 class AdminSummaryTests(TestCase):
     def setUp(self):
@@ -342,6 +431,25 @@ class AdminSummaryTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Veuillez choisir un lundi")
         self.assertEqual(DailyMenu.objects.filter(date__year=2030, date__month=1).count(), 0)
+
+    def test_admin_summary_shows_average_and_individual_ratings(self):
+        self.client.login(username="staff", password="secret123")
+        target_date = date.today() - timedelta(days=2)
+        lunch_one = Lunch.objects.create(user=self.user, lunch_date=target_date, lunch_choice="Plat du jour")
+        MealRating.objects.create(lunch=lunch_one, rating=4)
+        second_user = User.objects.create_user(username="user2", password="secret123")
+        lunch_two = Lunch.objects.create(user=second_user, lunch_date=target_date, lunch_choice="Poisson")
+        MealRating.objects.create(lunch=lunch_two, rating=2)
+
+        response = self.client.get(
+            reverse("admin_summary"),
+            {"year": target_date.year, "month": target_date.month},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "★ 3.0 / 5")
+        self.assertContains(response, "★ 4/5")
+        self.assertContains(response, "★ 2/5")
 
 
 class SuggestionTests(TestCase):
