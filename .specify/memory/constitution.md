@@ -1,11 +1,20 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.0.1 → 1.1.0
+Version change: 1.0.1 → 1.1.0 → 1.1.1
+
+--- 1.1.0 (2026-06-01) ---
 Modified principles:
   - §II last bullet: validation de choix de repas — LUNCH_OPTIONS (liste statique) remplacée
     par MealOption.objects.filter(is_active=True) (modèle BDD actif) + rejet explicite HTTP 400
   - Code Quality: suppression de la règle mandatant la liste LUNCH_OPTIONS dans views.py
+
+--- 1.1.1 (2026-06-03) CORRECTIVE ---
+Modified principles:
+  - §III: nom de la feuille de styles mis à jour de `style.css` → `custom.css`
+    Justification : la spec FR-012 de la fonctionnalité 002-modern-website-styling mandate
+    explicitement `custom.css` comme nom de livrable canonique ; l'esprit du principe (feuille
+    de styles unique, sans outil de build) est entièrement préservé.
 Added sections: Aucune
 Removed sections: Aucune
 Templates requiring updates:
@@ -67,7 +76,7 @@ pour la cuisine ou le traiteur.
   n'est autorisé.
 - Les appels AJAX DOIVENT utiliser un POST JSON vers `/save-lunch/` avec un en-tête
   `X-CSRFToken` ; les réponses du serveur DOIVENT être en JSON.
-- Une seule feuille de styles (`reservations/static/style.css`) DOIT contenir tous les
+- Une seule feuille de styles (`reservations/static/custom.css`) DOIT contenir tous les
   styles ; les attributs `style` en ligne dans les templates NE DOIVENT PAS être utilisés.
 - Tous les textes d'interface et messages flash DOIVENT être rédigés en français en
   utilisant le framework `messages` de Django (`messages.success` / `messages.error`).
@@ -167,4 +176,4 @@ les conventions Django existantes.
 Se référer au `README.md` du projet et à `COPILOT-INSTRUCTIONS.md` pour les conseils de
 développement au quotidien.
 
-**Version** : 1.1.0 | **Ratifiée** : 2026-05-17 | **Dernière modification** : 2026-06-01
+**Version** : 1.1.1 | **Ratifiée** : 2026-05-17 | **Dernière modification** : 2026-06-03
