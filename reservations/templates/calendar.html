@@ -66,6 +66,7 @@ let selectedDay = null;
 const year = {{ year }};
 const month = {{ month }};
 const options = {{ options|safe }};
+const ratingsEnabled = {{ ratings_enabled|yesno:'true,false' }};
 
 function getCookie(name) {
     let cookieValue = null;
@@ -104,7 +105,7 @@ function selectDay(day) {
     document.getElementById('statusMsg').innerText = "";
 
     toggleReservationSection(canReserve);
-    toggleRatingSection(canRate, existingRating);
+    toggleRatingSection(ratingsEnabled && canRate, existingRating);
     syncLunchOption(existingLunch, defaultOption);
 }
 
@@ -194,6 +195,11 @@ async function saveLunch() {
 async function saveMealRating(rating) {
     if (!selectedDay) {
         alert("Veuillez sélectionner un jour.");
+        return;
+    }
+
+    if (!ratingsEnabled) {
+        alert("La notation n'est pas encore disponible.");
         return;
     }
 

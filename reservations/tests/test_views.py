@@ -1,5 +1,6 @@
 import json
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core import mail
@@ -251,6 +252,15 @@ class CalendarAndLunchTests(TestCase):
         self.assertEqual(days[past.day]["rating"], 4)
         self.assertTrue(days[past.day]["can_rate"])
 
+    def test_calendar_disables_ratings_when_table_is_missing(self):
+        self.client.login(username="jane", password="secret123")
+
+        with patch("reservations.views._meal_rating_table_exists", return_value=False):
+            response = self.client.get(reverse("calendar"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["ratings_enabled"])
+
     def test_save_lunch_for_past_date_returns_400(self):
         self.client.login(username="jane", password="secret123")
         past = date.today() - timedelta(days=1)
@@ -367,6 +377,20 @@ class CalendarAndLunchTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(missing_response.status_code, 400)
+
+    def test_save_meal_rating_returns_503_when_table_is_missing(self):
+        self.client.login(username="jane", password="secret123")
+        past = date.today() - timedelta(days=2)
+        Lunch.objects.create(user=self.user, lunch_date=past, lunch_choice="Plat du jour")
+
+        with patch("reservations.views._meal_rating_table_exists", return_value=False):
+            response = self.client.post(
+                reverse("save_meal_rating"),
+                data=json.dumps({"day": past.day, "month": past.month, "year": past.year, "rating": 4}),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 503)
 
 
 class AdminSummaryTests(TestCase):
