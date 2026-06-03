@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.db import connection
 from django.http import JsonResponse
 from django.urls import reverse
 from django.shortcuts import redirect, render
@@ -91,6 +92,10 @@ def _default_meal_option(menu_label, active_options):
 
 def _calendar_date(year, month, day):
     return date(year, month, day)
+
+
+def _meal_rating_table_exists():
+    return MealRating._meta.db_table in connection.introspection.table_names()
 
 
 def index(request):
@@ -216,6 +221,7 @@ def calendar_view(request):
     db_menus_qs = DailyMenu.objects.filter(date__year=year, date__month=month)
     db_menus_by_day = {m.date.day: m.menu for m in db_menus_qs}
     active_options = list(MealOption.objects.filter(is_active=True).values_list("name", flat=True))
+    ratings_enabled = _meal_rating_table_exists()
 
     num_days = monthrange(year, month)[1]
     month_name_fr = _month_name_fr(month)
@@ -235,7 +241,7 @@ def calendar_view(request):
                "menu": menu_label,
                "lunch": lunch.lunch_choice if lunch else "",
                "default_option": _default_meal_option(menu_label, active_options),
-               "rating": ratings_by_lunch_id.get(lunch.id) if lunch else None,
+               "rating": ratings_by_lunch_id.get(lunch.id) if lunch and ratings_enabled else None,
                "can_reserve": current_date >= today + timedelta(days=7),
                "can_rate": current_date < today and lunch is not None,
            }
@@ -255,6 +261,7 @@ def calendar_view(request):
             "month_name_fr": month_name_fr,
             "days": days,
             "options": active_options,
+            "ratings_enabled": ratings_enabled,
             "prev_month": prev_month,
             "next_month": next_month,
             "prev_year": prev_year,
@@ -324,6 +331,12 @@ def save_meal_rating(request):
 
     if rating < 1 or rating > 5:
         return JsonResponse({"status": "error", "message": "Note invalide."}, status=400)
+
+    if not _meal_rating_table_exists():
+        return JsonResponse(
+            {"status": "error", "message": "La notation n'est pas encore disponible."},
+            status=503,
+        )
 
     rating_date = _calendar_date(year, month, day)
     if rating_date >= date.today():
@@ -397,7 +410,12 @@ def admin_summary(request):
                 return redirect(f"{reverse('admin_summary')}?year={start.year}&month={start.month}")
 
     rows = list(Lunch.objects.filter(lunch_date__year=year, lunch_date__month=month).select_related("user"))
-    ratings_by_lunch_id = {rating.lunch_id: rating.rating for rating in MealRating.objects.filter(lunch__in=rows)}
+    ratings_enabled = _meal_rating_table_exists()
+    ratings_by_lunch_id = (
+        {rating.lunch_id: rating.rating for rating in MealRating.objects.filter(lunch__in=rows)}
+        if ratings_enabled
+        else {}
+    )
 
     data = {}
     for row in rows:
