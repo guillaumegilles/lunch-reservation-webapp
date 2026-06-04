@@ -14,6 +14,7 @@ from django.db import connection
 from django.http import JsonResponse
 from django.urls import reverse
 from django.shortcuts import redirect, render
+from django.utils.timezone import localdate
 from django.views.decorators.http import require_POST
 
 from .forms import LoginForm, RegisterForm, WeeklyMenuForm, SuggestionForm
@@ -202,7 +203,7 @@ def dashboard_view(request):
 
 @login_required
 def calendar_view(request):
-    today = date.today()
+    today = localdate()
     year = int(request.GET.get("year", today.year))
     month = int(request.GET.get("month", today.month))
 
@@ -287,8 +288,8 @@ def save_lunch(request):
     year = int(payload.get("year"))
     lunch = payload.get("lunch", "")
 
-    lunch_date = date(year, month, day)
-    if lunch_date < date.today() + timedelta(days=7):
+    lunch_date = _calendar_date(year, month, day)
+    if lunch_date < localdate() + timedelta(days=7):
         return JsonResponse(
             {"status": "error", "message": "Impossible de réserver moins de 7 jours à l'avance."},
             status=400,
@@ -343,7 +344,7 @@ def save_meal_rating(request):
         )
 
     rating_date = _calendar_date(year, month, day)
-    if rating_date >= date.today():
+    if rating_date >= localdate():
         return JsonResponse(
             {"status": "error", "message": "La notation est réservée aux repas passés."},
             status=400,
@@ -370,7 +371,7 @@ def admin_summary(request):
         messages.error(request, "Accès réservé aux personnels du CSE")
         return redirect("calendar")
 
-    today = date.today()
+    today = localdate()
     year = int(request.GET.get("year", today.year))
     month = int(request.GET.get("month", today.month))
 

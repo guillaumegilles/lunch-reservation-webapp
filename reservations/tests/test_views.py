@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
+from django.utils.timezone import localdate
 
 from reservations.models import DailyMenu, Lunch, MealOption, MealRating, Suggestion, UserProfile
 
@@ -391,6 +392,66 @@ class CalendarAndLunchTests(TestCase):
             )
 
         self.assertEqual(response.status_code, 503)
+
+    def test_calendar_uses_localdate_not_utc_today(self):
+        """can_rate and can_reserve must use the configured timezone (Europe/Paris),
+        not the server's UTC clock. We simulate the UTC-vs-Paris boundary by patching
+        localdate to return a date one day ahead of date.today()."""
+        self.client.login(username="jane", password="secret123")
+        # Simulated Paris date is one day ahead of the server's UTC date.
+        paris_today = date.today() + timedelta(days=1)
+        paris_yesterday = paris_today - timedelta(days=1)
+        Lunch.objects.create(user=self.user, lunch_date=paris_yesterday, lunch_choice="Plat du jour")
+
+        with patch("reservations.views.localdate", return_value=paris_today):
+            response = self.client.get(
+                reverse("calendar"),
+                {"year": paris_yesterday.year, "month": paris_yesterday.month},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        days = {d["day"]: d for d in response.context["days"]}
+        day_ctx = days[paris_yesterday.day]
+        # paris_yesterday < paris_today → can_rate must be True
+        self.assertTrue(day_ctx["can_rate"], "can_rate should be True for paris_yesterday when localdate is paris_today")
+        # paris_yesterday is not >= paris_today + 7 days → can_reserve must be False
+        self.assertFalse(day_ctx["can_reserve"])
+
+    def test_save_meal_rating_uses_localdate_not_utc_today(self):
+        """Rating a past date must use localdate(), not date.today().
+        Simulates the midnight boundary: server UTC = yesterday, Paris = today.
+        A meal from UTC-yesterday is 'today' in UTC but 'yesterday' in Paris — must be rateable."""
+        self.client.login(username="jane", password="secret123")
+        utc_yesterday = date.today() - timedelta(days=1)
+        paris_today = date.today()
+        Lunch.objects.create(user=self.user, lunch_date=utc_yesterday, lunch_choice="Plat du jour")
+
+        # localdate() returns paris_today; utc_yesterday < paris_today → should be rateable
+        with patch("reservations.views.localdate", return_value=paris_today):
+            response = self.client.post(
+                reverse("save_meal_rating"),
+                data=json.dumps({"day": utc_yesterday.day, "month": utc_yesterday.month, "year": utc_yesterday.year, "rating": 5}),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_save_lunch_7_day_guard_uses_localdate(self):
+        """The 7-day reservation guard must use localdate() so Paris-timezone users
+        get a consistent cutoff regardless of the server's UTC clock."""
+        self.client.login(username="jane", password="secret123")
+        # Paris date is 1 day ahead of UTC; 8 days from Paris today = 8 days from UTC tomorrow
+        paris_today = date.today() + timedelta(days=1)
+        target = paris_today + timedelta(days=8)
+
+        with patch("reservations.views.localdate", return_value=paris_today):
+            response = self.client.post(
+                reverse("save_lunch"),
+                data=json.dumps({"day": target.day, "month": target.month, "year": target.year, "lunch": "Plat du jour"}),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
 
 
 class AdminSummaryTests(TestCase):
