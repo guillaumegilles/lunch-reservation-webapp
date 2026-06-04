@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput",
+  "buildCommand": "pip install -r requirements.txt && python -c \"import os,sys; sys.exit(0) if os.getenv('DATABASE_URL') else sys.exit('ERROR: DATABASE_URL must be exposed as a build-time environment variable in Vercel project settings so migrations run against PostgreSQL, not the local SQLite fallback.')\" && python manage.py migrate && python manage.py collectstatic --noinput",
   "builds": [
     {
       "src": "django_project/wsgi.py",
