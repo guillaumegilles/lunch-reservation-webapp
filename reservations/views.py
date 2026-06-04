@@ -213,15 +213,19 @@ def calendar_view(request):
     ).select_related("user")
     lunches_by_day = {l.lunch_date.day: l for l in lunches_qs}
 
-    ratings_by_lunch_id = {
-       rating.lunch_id: rating.rating
-       for rating in MealRating.objects.filter(lunch__in=lunches_qs)
-    }
-
     db_menus_qs = DailyMenu.objects.filter(date__year=year, date__month=month)
     db_menus_by_day = {m.date.day: m.menu for m in db_menus_qs}
     active_options = list(MealOption.objects.filter(is_active=True).values_list("name", flat=True))
     ratings_enabled = _meal_rating_table_exists()
+
+    ratings_by_lunch_id = (
+        {
+            rating.lunch_id: rating.rating
+            for rating in MealRating.objects.filter(lunch__in=lunches_qs)
+        }
+        if ratings_enabled
+        else {}
+    )
 
     num_days = monthrange(year, month)[1]
     month_name_fr = _month_name_fr(month)
