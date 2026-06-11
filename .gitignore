@@ -19,3 +19,4 @@ build/
 *.old
 .vercel
 .env*.local
+.env.production

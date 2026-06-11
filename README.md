@@ -1,181 +1,342 @@
-# Lunch Reservation WebApp (Django)
+# 🍽️ Lunch Reservation WebApp (Django)
 
-Application web simple pour réserver les repas du midi.
+Application web pour gérer les réservations de repas du midi en entreprise. Les employés réservent leur repas, le personnel CSE visualise les demandes et ajuste les quantités.
 
-Ce guide est écrit pour un utilisateur débutant.
+**Documentation complète** : 📖 Voir [`wiki/`](wiki/) (en français)
 
-## 1) Prérequis
+## 🚀 Démarrage rapide
 
-Avant de commencer, installe:
-
+### 1️⃣ Prérequis
 - Python 3.11+
-- pip
-- git
+- pip / git
 
-Vérifie dans un terminal:
-
-```bash
-python3 --version
-pip3 --version
-git --version
-```
-
-## 2) Récupérer le projet
+### 2️⃣ Installation locale (5 minutes)
 
 ```bash
+# Cloner le repository
 git clone <repo-url>
-cd lunch-reservation-webapp
+cd lunch-reservation
+
+# Créer un environnement virtuel
+python3 -m venv .venv
+source .venv/bin/activate          # Sur Windows: .venv\Scripts\activate
+
+# Installer les dépendances
+pip install -r requirements.txt
+
+# Initialiser la base de données
+python manage.py migrate
+python manage.py init_db
+
+# Lancer le serveur
+python manage.py runserver
 ```
 
-## 3) Installer les dépendances
+Ouvrir : http://127.0.0.1:8000/
+
+### 3️⃣ Comptes de test
+
+| Identifiant | Mot de passe | Rôle |
+|------------|-------------|------|
+| `Z999999` | `password` | Admin |
+| _À créer_ | - | Utilisateur standard |
+
+### 4️⃣ Lancer les tests
 
 ```bash
-pip3 install -r requirements.txt
+python manage.py test
 ```
 
-Si cette commande échoue, regarde la section "Dépannage" plus bas.
+## 📚 Documentation
 
-## 4) Initialiser la base de données
+### Pour les utilisateurs finaux
+- 👤 **[Guide utilisateur](wiki/User-Guide.md)** — Comment réserver un repas
+- 👔 **[Guide staff](wiki/Staff-Guide.md)** — Récapitulatif et gestion des menus
 
-Cette étape crée les tables nécessaires dans SQLite.
+### Pour les administrateurs
+- ⚙️ **[Guide d'administration](wiki/05-Administration.md)** — Gestion complète
+- 🚀 **[Déploiement](wiki/04-Deployment-Complete.md)** — Production & Vercel
+- 🐧 **[Configuration](wiki/Configuration.md)** — Variables d'environnement
 
-```bash
-python3 manage.py migrate
-```
+### Pour les développeurs
+- 💻 **[Guide du développeur](wiki/02-Developer-Guide.md)** — Architecture & code
+- 🔌 **[API Reference](wiki/03-API-Reference.md)** — Endpoints JSON
+- 🏗️ **[Architecture](wiki/Architecture.md)** — Diagrammes & flux
+- 🐛 **[Troubleshooting](wiki/Troubleshooting.md)** — Dépannage
 
-## 5) Créer l'utilisateur admin par défaut
+### Démarrage
+- 📖 **[Introduction](wiki/01-Introduction.md)** — Vue d'ensemble
+- ⚡ **[Getting Started](wiki/Getting-Started.md)** — Détails installation
 
-```bash
-python3 manage.py init_db
-```
+👉 **Accès complet** : [Wiki complet](wiki/Home.md)
 
-## 6) Lancer le serveur
+## 🎯 Fonctionnalités principales
 
-```bash
-python3 manage.py runserver 0.0.0.0:8000
-```
+### Pour les employés ✅
+- ✏️ Se connecter avec identifiant badge (1 lettre + 6 chiffres)
+- 📅 Consulter le calendrier mensuel
+- 🍽️ Choisir un repas pour chaque jour ouvrable
+- 🔒 Modification jusqu'au jour même (dates passées verrouillées)
+- ⭐ Noter les repas après consommation
+- 💡 Suggérer des améliorations
 
-Puis ouvre ton navigateur sur:
+### Pour le staff (CSE) ✅
+- 📊 Voir le récapitulatif mensuel des réservations
+- 📝 Définir le menu de la semaine
+- 👥 Consulter les suggestions des employés
+- 📈 Analyser les tendances de demande
+- 👨‍💼 Accès complet à l'administration Django
 
-- http://127.0.0.1:8000/
-
-Pour arrêter le serveur dans le terminal: `Ctrl + C`
-
-## 7) Connexion admin
-
-Compte admin créé par `init_db`:
-
-- Username: Z999999
-- Password: password
-
-Tu peux aussi créer un compte depuis la page d'inscription.
-
-## Fonctionnement de l'application
-
-Les employés se connectent, choisissent leur repas sur un calendrier mensuel, et peuvent modifier leurs réservations jusqu'au jour même. Les membres du personnel (CSE) ont accès à un récapitulatif mensuel de toutes les réservations.
-
-**Roles utilisateurs**
-- Utilisateur standard : consulte et modifie son propre calendrier.
-- Staff (`is_staff=True`) : accès supplémentaire au récapitulatif mensuel de tous les employés.
-
-**Flux principal**
-1. L'utilisateur se connecte (ou crée un compte).
-2. Il arrive sur son calendrier mensuel et clique sur un jour pour choisir son repas parmi les options disponibles.
-3. La sélection est sauvegardée en AJAX via `POST /save-lunch/` (JSON + CSRF token).
-4. Les dates passées sont verrouillées côté serveur.
-5. Le staff peut naviguer sur `/admin-summary/` pour voir le tableau récapitulatif mois par mois.
-
-## Organisation des fichiers
+## 🗂️ Structure du projet
 
 ```
 lunch-reservation/
-├── manage.py                        # Point d'entrée Django
-├── requirements.txt                 # Dépendances Python
-├── db.sqlite3                       # Base de données SQLite (générée)
+├── django_project/                    # Configuration Django
+│   ├── settings.py                    # Settings
+│   ├── urls.py                        # URLs racine
+│   └── wsgi.py
 │
-├── django_project/                  # Configuration du projet Django
-│   ├── settings.py
-│   ├── urls.py                      # URLs racine (inclut reservations.urls)
-│   ├── wsgi.py
-│   └── asgi.py
+├── reservations/                      # Application métier
+│   ├── models.py                      # Modèles : Lunch, MealOption, MealRating, etc.
+│   ├── views.py                       # Vues : login, calendar, save_lunch, admin, etc.
+│   ├── urls.py                        # Routes de l'app
+│   ├── forms.py                       # Formulaires : LoginForm, RegisterForm, WeeklyMenuForm
+│   ├── admin.py                       # Configuration admin Django
+│   ├── templates/                     # Pages HTML (en français)
+│   │   ├── base.html                  # Layout de base
+│   │   ├── calendar.html              # Calendrier interactif (AJAX)
+│   │   ├── admin.html                 # Récapitulatif staff
+│   │   └── ...
+│   ├── static/
+│   │   └── style.css                  # Feuille de styles responsive
+│   ├── management/commands/
+│   │   └── init_db.py                 # Initialise admin + options
+│   └── tests/
+│       └── test_views.py              # Tests des vues
 │
-└── reservations/                    # Application principale
-    ├── models.py                    # Modèle Lunch (user, lunch_date, lunch_choice)
-    ├── views.py                     # Toutes les vues + constante LUNCH_OPTIONS
-    ├── urls.py                      # Routes de l'app
-    ├── forms.py                     # LoginForm, RegisterForm
-    ├── admin.py                     # Enregistrement dans l'admin Django
-    ├── apps.py
-    │
-    ├── templates/                   # Templates HTML
-    │   ├── base.html                # Layout de base
-    │   ├── index.html               # Page d'accueil
-    │   ├── login.html
-    │   ├── register.html
-    │   ├── calendar.html            # Calendrier mensuel (AJAX)
-    │   └── admin.html               # Récapitulatif staff
-    │
-    ├── static/
-    │   └── style.css
-    │
-    ├── management/commands/
-    │   └── init_db.py               # Crée l'utilisateur admin par défaut
-    │
-    ├── migrations/                  # Migrations Django (generees)
-    └── tests/
-        └── test_views.py
+├── wiki/                              # Documentation (LIRE D'ABORD!)
+├── specs/                             # Spécifications des features
+├── manage.py                          # Exécutable Django
+├── requirements.txt                   # Dépendances
+├── db.sqlite3                         # BD locale (générée)
+├── vercel.json                        # Config Vercel
+└── README.md                          # Ce fichier
 ```
 
-## Commandes utiles
+## 🔐 Modèles de données
 
-Relancer les migrations:
+### Lunch
+Réservation d'un utilisateur pour un jour
+```python
+user         # FK vers User Django
+lunch_date   # DateField
+lunch_choice # CharField
+# unique_together: (user, lunch_date)
+```
+
+### MealOption
+Options de repas disponibles
+```python
+name        # "Poisson", "Végétarien", etc.
+is_active   # True/False
+order       # Ordre d'affichage
+```
+
+### MealRating
+Notation d'un repas (1-5 étoiles)
+```python
+lunch       # OneToOne vers Lunch
+rating      # int 1-5
+created_at  # Timestamp
+```
+
+### DailyMenu
+Menu du jour défini par le staff
+```python
+date        # DateField (unique)
+menu        # CharField
+```
+
+### Suggestion
+Suggestions d'amélioration des utilisateurs
+```python
+user        # FK vers User
+text        # TextField (max 500)
+created_at  # Timestamp
+is_read     # Boolean
+```
+
+Voir [`reservations/models.py`](reservations/models.py) pour le détail complet.
+
+## ⚙️ Configuration
+
+### Variables d'environnement clés
+
+| Variable | Défaut | Production |
+|----------|--------|-----------|
+| `DEBUG` | `True` | `False` ❌ |
+| `SECRET_KEY` | Généré | À définir 🔑 |
+| `ALLOWED_HOSTS` | `localhost` | Domaines réels |
+| `DATABASE_URL` | SQLite local | PostgreSQL URL |
+| `SECURE_SSL_REDIRECT` | `False` | `True` 🔒 |
+
+Voir [Configuration.md](wiki/Configuration.md) pour tous les détails.
+
+## 🚀 Déploiement
+
+### Option 1 : Vercel (recommandé - gratuit)
 
 ```bash
-python3 manage.py migrate
+# Créer un compte Vercel
+# Connecter le GitHub repo
+# Vercel crée automatiquement PostgreSQL
+# Variables d'environnement via Vercel Dashboard
 ```
 
-Lancer les tests:
+👉 Guide : [Vercel Deployment](wiki/Vercel-Deployment.md)
+
+### Option 2 : Serveur Linux + Gunicorn + Nginx
 
 ```bash
-python3 manage.py test
+pip install gunicorn
+gunicorn django_project.wsgi --bind 0.0.0.0:8000 --workers 4
 ```
 
-## Dépannage (erreurs fréquentes)
+👉 Guide : [Deployment](wiki/04-Deployment-Complete.md)
 
-### Erreur: "python: can't open file 'manage.py'"
-
-Tu n'es probablement pas dans le bon dossier.
+## 🔍 Commandes utiles
 
 ```bash
-cd lunch-reservation-webapp
-ls
+# Appliquer les migrations
+python manage.py migrate
+
+# Initialiser la BD (admin + options)
+python manage.py init_db
+
+# Lancer le serveur local
+python manage.py runserver
+
+# Lancer les tests
+python manage.py test
+
+# Accéder au shell Django
+python manage.py shell
+
+# Créer un superuser supplémentaire
+python manage.py createsuperuser
+
+# Vérifier la config production
+python manage.py check --deploy
+
+# Collecter les fichiers statiques
+python manage.py collectstatic --no-input
 ```
 
-Tu dois voir le fichier `manage.py` dans la liste.
+## 📋 Routes principales
 
-### Erreur: "No module named django"
+| Route | Méthode | Description |
+|-------|---------|-------------|
+| `/` | GET | Accueil |
+| `/login/` | GET/POST | Connexion |
+| `/register/` | GET/POST | Inscription |
+| `/dashboard/` | GET | Tableau de bord |
+| `/calendar/` | GET | Calendrier mensuel |
+| `/save-lunch/` | POST | Enregistrer réservation (AJAX) |
+| `/admin-summary/` | GET | Récapitulatif (staff) |
+| `/weekly-menu/` | GET/POST | Gestion menu (staff) |
+| `/suggestions/` | GET | Voir suggestions (staff) |
+| `/django-admin/` | GET | Admin Django (superuser) |
 
-Django n'est pas installé dans l'environnement Python actif.
+Voir [API Reference](wiki/03-API-Reference.md) pour le détail complet.
+
+## 🧪 Tests
 
 ```bash
-pip3 install -r requirements.txt
-python3 manage.py runserver 0.0.0.0:8000
+# Lancer tous les tests
+python manage.py test
+
+# Test verbose
+python manage.py test -v 2
+
+# Un fichier spécifique
+python manage.py test reservations.tests.test_views
+
+# Une classe spécifique
+python manage.py test reservations.tests.test_views.LoginViewTests
 ```
 
-### Erreur de conflit entre `python3` et `pip3`
+## 🐛 Troubleshooting
 
-Sur certaines machines, `python3` et `pip3` ne pointent pas vers la même version de Python.
-
-Vérifie:
-
+### Erreur : "No module named django"
 ```bash
-python3 -c "import sys; print(sys.executable)"
-pip3 --version
+pip install -r requirements.txt
 ```
 
-Si besoin, utilise:
+### Erreur : "Allowed host not valid"
+Ajouter le domaine à `ALLOWED_HOSTS` dans `.env.production`
 
-```bash
-python3 -m pip install -r requirements.txt
-python3 manage.py runserver 0.0.0.0:8000
-```
+### BD inaccessible
+Vérifier `DATABASE_URL` et permissions PostgreSQL
+
+👉 Voir [Troubleshooting.md](wiki/Troubleshooting.md) pour plus.
+
+## 🔒 Sécurité
+
+✅ **Implémenté :**
+- CSRF protection (tokens sur tous les POST)
+- Password hashing (bcrypt via Django)
+- Session-based authentication
+- Dates passées verrouillées côté serveur
+
+⚠️ **À faire en production :**
+- `DEBUG=False`
+- HTTPS forcé (`SECURE_SSL_REDIRECT=True`)
+- Cookies sécurisés (`SESSION_COOKIE_SECURE=True`)
+- Clé secrète forte et unique
+
+## 📊 Performance
+
+- **Calendrier** : Une requête BD par mois
+- **Save lunch** : Une requête BD + upsert
+- **Admin summary** : Une requête BD avec agrégation
+
+Optimisations :
+- Pas de N+1 queries (select_related/prefetch_related)
+- Indexation BD sur (user, lunch_date)
+- Caching optionnel en session
+
+## 📝 Convention de nommage
+
+- Format identifiants : **1 lettre + 6 chiffres** (ex: `K589479`)
+- Dates : **ISO 8601** (YYYY-MM-DD)
+- Langue interface : **Français** 🇫🇷
+- Langue code : **Anglais** 🇬🇧
+- Langue commentaires : **Anglais** ou **Français**
+
+## 📞 Support & Documentation
+
+- **Wiki complet** : [wiki/Home.md](wiki/Home.md)
+- **Installation** : [wiki/Getting-Started.md](wiki/Getting-Started.md)
+- **Déploiement** : [wiki/04-Deployment-Complete.md](wiki/04-Deployment-Complete.md)
+- **Dépannage** : [wiki/Troubleshooting.md](wiki/Troubleshooting.md)
+- **GitHub** : [Repository](https://github.com/skekcoon/lunch-reservation)
+
+## 👥 Contribution
+
+Les contributions sont les bienvenues ! Pour contribuer :
+1. Fork le repository
+2. Créer une branche `feature/ma-feature`
+3. Commit les changements
+4. Push et ouvrir une Pull Request
+
+## 📄 License
+
+[À définir - voir LICENSE.md]
+
+---
+
+**Version** : 1.0  
+**Dernière mise à jour** : Juin 2026  
+**Statut** : Production-ready ✅
+
+Pour une première utilisation, lire [wiki/Getting-Started.md](wiki/Getting-Started.md) ou [wiki/Introduction](wiki/01-Introduction.md).
