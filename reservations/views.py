@@ -216,7 +216,9 @@ def calendar_view(request):
 
     db_menus_qs = DailyMenu.objects.filter(date__year=year, date__month=month)
     db_menus_by_day = {m.date.day: m.menu for m in db_menus_qs}
-    active_options = list(MealOption.objects.filter(is_active=True).values_list("name", flat=True))
+    active_options = list(MealOption.objects.filter(is_active=True).values("name", "advance_days"))
+    active_option_names = [opt["name"] for opt in active_options]
+    min_advance_days = min((opt["advance_days"] for opt in active_options), default=2)
     ratings_enabled = _meal_rating_table_exists()
 
     ratings_by_lunch_id = (
@@ -237,6 +239,7 @@ def calendar_view(request):
            continue
        lunch = lunches_by_day.get(d)
        menu_label = _menu_for_date(current_date, db_menus_by_day)
+       days_until = (current_date - today).days
        days.append(
            {
                "day": d,
@@ -245,9 +248,10 @@ def calendar_view(request):
                "full_label": _full_date_label(current_date),
                "menu": menu_label,
                "lunch": lunch.lunch_choice if lunch else "",
-               "default_option": _default_meal_option(menu_label, active_options),
+               "default_option": _default_meal_option(menu_label, active_option_names),
                "rating": ratings_by_lunch_id.get(lunch.id) if lunch and ratings_enabled else None,
-               "can_reserve": current_date >= today + timedelta(days=7),
+               "days_until": days_until,
+               "can_reserve": days_until >= min_advance_days,
                "can_rate": current_date < today and lunch is not None,
            }
        )
@@ -289,22 +293,26 @@ def save_lunch(request):
     lunch = payload.get("lunch", "")
 
     lunch_date = _calendar_date(year, month, day)
-    if lunch_date < localdate() + timedelta(days=7):
-        return JsonResponse(
-            {"status": "error", "message": "Impossible de réserver moins de 7 jours à l'avance."},
-            status=400,
-        )
-
     if lunch == "":
         Lunch.objects.filter(user=request.user, lunch_date=lunch_date).delete()
         return JsonResponse({"status": "success", "message": "Réservation annulée."})
 
-    valid_options = set(MealOption.objects.filter(is_active=True).values_list("name", flat=True))
+    valid_options = {opt.name: opt for opt in MealOption.objects.filter(is_active=True)}
     if lunch not in valid_options:
         return JsonResponse(
             {
                 "status": "error",
                 "message": "Option de repas invalide.",
+            },
+            status=400,
+        )
+
+    option = valid_options[lunch]
+    if lunch_date < localdate() + timedelta(days=option.advance_days):
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": f"Cette option doit être réservée au moins {option.advance_days} jours à l'avance.",
             },
             status=400,
         )

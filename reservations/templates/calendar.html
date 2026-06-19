@@ -21,7 +21,7 @@
 
 <div class="row g-2 mb-4">
 {% for d in days %}
-    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-full-label="{{ d.full_label|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" data-default-option="{{ d.default_option|escape }}" data-rating="{{ d.rating|default_if_none:'' }}" data-can-reserve="{{ d.can_reserve|yesno:'true,false' }}" data-can-rate="{{ d.can_rate|yesno:'true,false' }}" {% if d.can_reserve or d.can_rate %}onclick="selectDay({{ d.day }})"{% endif %}>
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-full-label="{{ d.full_label|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" data-default-option="{{ d.default_option|escape }}" data-rating="{{ d.rating|default_if_none:'' }}" data-days-until="{{ d.days_until }}" data-can-reserve="{{ d.can_reserve|yesno:'true,false' }}" data-can-rate="{{ d.can_rate|yesno:'true,false' }}" {% if d.can_reserve or d.can_rate %}onclick="selectDay({{ d.day }})"{% endif %}>
         <div class="p-2 border rounded text-center h-100 selectable-day {% if not d.can_reserve and not d.can_rate %}locked-day{% endif %}">
             <div>{{ d.full_label }}</div>
             {% if d.lunch %}
@@ -99,6 +99,7 @@ function selectDay(day) {
     const canReserve = dayContainer.dataset.canReserve === "true";
     const canRate = canRateDay(dayContainer);
     const existingRating = dayContainer.dataset.rating ? parseInt(dayContainer.dataset.rating, 10) : 0;
+    const daysUntil = parseInt(dayContainer.dataset.daysUntil, 10);
 
     document.getElementById('selectedDay').innerText = dayContainer.dataset.fullLabel;
     document.getElementById('selectedLunch').innerText = existingLunch ? `Repas enregistré : ${existingLunch}` : "Aucune réservation enregistrée.";
@@ -106,7 +107,7 @@ function selectDay(day) {
 
     toggleReservationSection(canReserve);
     toggleRatingSection(ratingsEnabled && canRate, existingRating);
-    syncLunchOption(existingLunch, defaultOption);
+    syncLunchOption(existingLunch, defaultOption, daysUntil);
 }
 
 function toggleReservationSection(show) {
@@ -125,18 +126,20 @@ function toggleRatingSection(show, currentRating) {
     renderRatingStars(currentRating);
 }
 
-function syncLunchOption(existingLunch, defaultOption) {
+function syncLunchOption(existingLunch, defaultOption, daysUntil) {
     const select = document.getElementById('lunchOption');
     select.innerHTML = "<option value=\"\">-- Choisir un repas --</option>";
 
-    options.forEach((value) => {
-        const opt = document.createElement('option');
-        opt.value = value;
-        opt.textContent = value;
-        select.appendChild(opt);
+    const available = options.filter(opt => daysUntil >= opt.advance_days);
+    available.forEach((opt) => {
+        const o = document.createElement('option');
+        o.value = opt.name;
+        o.textContent = opt.name;
+        select.appendChild(o);
     });
 
-    select.value = options.includes(existingLunch) ? existingLunch : (options.includes(defaultOption) ? defaultOption : "");
+    const names = available.map(opt => opt.name);
+    select.value = names.includes(existingLunch) ? existingLunch : (names.includes(defaultOption) ? defaultOption : "");
 }
 
 function renderRatingStars(currentRating) {

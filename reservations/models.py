@@ -7,6 +7,7 @@ class MealOption(models.Model):
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
     order = models.PositiveSmallIntegerField(default=0)
+    advance_days = models.PositiveSmallIntegerField(default=7)
 
     class Meta:
         ordering = ["order", "name"]
