@@ -8,4 +8,5 @@ fi
 
 pip install -r requirements.txt
 python manage.py migrate
+python manage.py init_db
 python manage.py collectstatic --noinput

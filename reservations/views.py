@@ -99,6 +99,16 @@ def _meal_rating_table_exists():
     return MealRating._meta.db_table in connection.introspection.table_names()
 
 
+def _mealoption_has_advance_days():
+    """Return True if the advance_days column has been migrated into the DB."""
+    try:
+        with connection.cursor() as cursor:
+            columns = {col.name for col in connection.introspection.get_table_description(cursor, MealOption._meta.db_table)}
+        return "advance_days" in columns
+    except Exception:
+        return False
+
+
 def index(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
@@ -216,7 +226,10 @@ def calendar_view(request):
 
     db_menus_qs = DailyMenu.objects.filter(date__year=year, date__month=month)
     db_menus_by_day = {m.date.day: m.menu for m in db_menus_qs}
-    active_options = list(MealOption.objects.filter(is_active=True).values("name", "advance_days"))
+    if _mealoption_has_advance_days():
+        active_options = list(MealOption.objects.filter(is_active=True).values("name", "advance_days"))
+    else:
+        active_options = [{"name": n, "advance_days": 7} for n in MealOption.objects.filter(is_active=True).values_list("name", flat=True)]
     active_option_names = [opt["name"] for opt in active_options]
     min_advance_days = min((opt["advance_days"] for opt in active_options), default=2)
     ratings_enabled = _meal_rating_table_exists()
@@ -297,8 +310,12 @@ def save_lunch(request):
         Lunch.objects.filter(user=request.user, lunch_date=lunch_date).delete()
         return JsonResponse({"status": "success", "message": "Réservation annulée."})
 
-    valid_options = {opt.name: opt for opt in MealOption.objects.filter(is_active=True)}
-    if lunch not in valid_options:
+    if _mealoption_has_advance_days():
+        options_map = {item["name"]: item["advance_days"] for item in MealOption.objects.filter(is_active=True).values("name", "advance_days")}
+    else:
+        options_map = {name: 7 for name in MealOption.objects.filter(is_active=True).values_list("name", flat=True)}
+
+    if lunch not in options_map:
         return JsonResponse(
             {
                 "status": "error",
@@ -307,12 +324,12 @@ def save_lunch(request):
             status=400,
         )
 
-    option = valid_options[lunch]
-    if lunch_date < localdate() + timedelta(days=option.advance_days):
+    advance_days = options_map[lunch]
+    if lunch_date < localdate() + timedelta(days=advance_days):
         return JsonResponse(
             {
                 "status": "error",
-                "message": f"Cette option doit être réservée au moins {option.advance_days} jours à l'avance.",
+                "message": f"Cette option doit être réservée au moins {advance_days} jours à l'avance.",
             },
             status=400,
         )
