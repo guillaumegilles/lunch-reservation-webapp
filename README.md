@@ -14,7 +14,7 @@ Application web pour gérer les réservations de repas du midi en entreprise. Le
 
 ```bash
 # Cloner le repository
-git clone <repo-url>
+git clone https://github.com/skekcoon/lunch-reservation
 cd lunch-reservation
 
 # Créer un environnement virtuel
@@ -166,6 +166,13 @@ created_at  # Timestamp
 is_read     # Boolean
 ```
 
+### UserProfile
+Profil étendu lié à un utilisateur Django
+```python
+user         # OneToOne vers User
+badge_number # CharField (ex: K589479)
+```
+
 Voir [`reservations/models.py`](reservations/models.py) pour le détail complet.
 
 ## ⚙️ Configuration
@@ -238,13 +245,14 @@ python manage.py collectstatic --no-input
 |-------|---------|-------------|
 | `/` | GET | Accueil |
 | `/login/` | GET/POST | Connexion |
+| `/logout/` | POST | Déconnexion |
 | `/register/` | GET/POST | Inscription |
 | `/dashboard/` | GET | Tableau de bord |
 | `/calendar/` | GET | Calendrier mensuel |
 | `/save-lunch/` | POST | Enregistrer réservation (AJAX) |
+| `/save-meal-rating/` | POST | Enregistrer une note (AJAX) |
 | `/admin-summary/` | GET | Récapitulatif (staff) |
-| `/weekly-menu/` | GET/POST | Gestion menu (staff) |
-| `/suggestions/` | GET | Voir suggestions (staff) |
+| `/suggestion-submit/` | POST | Soumettre une suggestion |
 | `/django-admin/` | GET | Admin Django (superuser) |
 
 Voir [API Reference](wiki/03-API-Reference.md) pour le détail complet.
@@ -331,7 +339,7 @@ Les contributions sont les bienvenues ! Pour contribuer :
 
 ## 📄 License
 
-[À définir - voir LICENSE.md]
+[GPL-3.0](LICENSE)
 
 ---
 

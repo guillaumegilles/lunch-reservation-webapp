@@ -1,22 +1,49 @@
-.venv/
-
-.github/
-
-*.pyc
-__pycache__/
-
 db.sqlite3
 
-.pytest_cache/
-.coverage
-htmlcov/
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
 dist/
 build/
-*.egg-info/
 
-# Old backup files
-*.old
-.vercel
-.env*.local
-.env.production
+# Environment (all variants)
+.env
+.env.*
+
+# Coverage
+.coverage
+htmlcov/
+coverage/
+*.lcov
+.pytest_cache/
+
+# Vercel
+.vercel/
+
+# Misc
+*.tmp
+*.bak
