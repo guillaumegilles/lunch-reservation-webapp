@@ -188,7 +188,7 @@ class CalendarAndLunchTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("options", response.context)
-        self.assertEqual(list(response.context["options"]), ["Plat du jour"])
+        self.assertEqual(list(response.context["options"]), [{"name": "Plat du jour", "advance_days": 7}])
 
     def test_calendar_prefers_matching_daily_menu_option(self):
         self.client.login(username="jane", password="secret123")
