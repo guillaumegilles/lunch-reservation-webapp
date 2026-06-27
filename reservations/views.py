@@ -1,4 +1,5 @@
 import json
+import logging
 from calendar import monthrange
 from datetime import date, timedelta
 
@@ -10,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.db import connection
+from django.db import OperationalError, ProgrammingError, connection
 from django.http import JsonResponse
 from django.urls import reverse
 from django.shortcuts import redirect, render
@@ -21,6 +22,9 @@ from .forms import LoginForm, RegisterForm, WeeklyMenuForm, SuggestionForm
 from .models import DailyMenu, Lunch, MealOption, MealRating, Suggestion, UserProfile
 
 DEFAULT_DAILY_MENU = "Plat du jour"
+DEFAULT_ADVANCE_DAYS = 7
+
+logger = logging.getLogger(__name__)
 
 FRENCH_WEEKDAY_NAMES = {
     0: "Lundi",
@@ -99,14 +103,18 @@ def _meal_rating_table_exists():
     return MealRating._meta.db_table in connection.introspection.table_names()
 
 
-def _mealoption_has_advance_days():
-    """Return True if the advance_days column has been migrated into the DB."""
+def _active_meal_options():
     try:
-        with connection.cursor() as cursor:
-            columns = {col.name for col in connection.introspection.get_table_description(cursor, MealOption._meta.db_table)}
-        return "advance_days" in columns
-    except Exception:
-        return False
+        return list(MealOption.objects.filter(is_active=True).values("name", "advance_days"))
+    except (OperationalError, ProgrammingError) as exc:
+        logger.warning(
+            "MealOption.advance_days column is unavailable; falling back to the default advance delay: %s",
+            exc,
+        )
+        return [
+            {"name": name, "advance_days": DEFAULT_ADVANCE_DAYS}
+            for name in MealOption.objects.filter(is_active=True).values_list("name", flat=True)
+        ]
 
 
 def index(request):
@@ -226,10 +234,7 @@ def calendar_view(request):
 
     db_menus_qs = DailyMenu.objects.filter(date__year=year, date__month=month)
     db_menus_by_day = {m.date.day: m.menu for m in db_menus_qs}
-    if _mealoption_has_advance_days():
-        active_options = list(MealOption.objects.filter(is_active=True).values("name", "advance_days"))
-    else:
-        active_options = [{"name": n, "advance_days": 7} for n in MealOption.objects.filter(is_active=True).values_list("name", flat=True)]
+    active_options = _active_meal_options()
     active_option_names = [opt["name"] for opt in active_options]
     min_advance_days = min((opt["advance_days"] for opt in active_options), default=2)
     ratings_enabled = _meal_rating_table_exists()
@@ -310,10 +315,7 @@ def save_lunch(request):
         Lunch.objects.filter(user=request.user, lunch_date=lunch_date).delete()
         return JsonResponse({"status": "success", "message": "Réservation annulée."})
 
-    if _mealoption_has_advance_days():
-        options_map = {item["name"]: item["advance_days"] for item in MealOption.objects.filter(is_active=True).values("name", "advance_days")}
-    else:
-        options_map = {name: 7 for name in MealOption.objects.filter(is_active=True).values_list("name", flat=True)}
+    options_map = {item["name"]: item["advance_days"] for item in _active_meal_options()}
 
     if lunch not in options_map:
         return JsonResponse(

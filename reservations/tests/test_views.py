@@ -4,6 +4,8 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core import mail
+from django.db import ProgrammingError
+from django.db.models import QuerySet
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.timezone import localdate
@@ -188,6 +190,21 @@ class CalendarAndLunchTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("options", response.context)
+        self.assertEqual(list(response.context["options"]), [{"name": "Plat du jour", "advance_days": 7}])
+
+    def test_calendar_falls_back_when_advance_days_column_is_missing(self):
+        self.client.login(username="jane", password="secret123")
+        original_values = QuerySet.values
+
+        def values_with_missing_advance_days(queryset, *fields, **expressions):
+            if fields == ("name", "advance_days"):
+                raise ProgrammingError('column reservations_mealoption.advance_days does not exist')
+            return original_values(queryset, *fields, **expressions)
+
+        with patch.object(QuerySet, "values", autospec=True, side_effect=values_with_missing_advance_days):
+            response = self.client.get(reverse("calendar"))
+
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(list(response.context["options"]), [{"name": "Plat du jour", "advance_days": 7}])
 
     def test_calendar_prefers_matching_daily_menu_option(self):
