@@ -18,6 +18,7 @@ from django.shortcuts import redirect, render
 from django.utils.timezone import localdate
 from django.views.decorators.http import require_POST
 
+from .db_compat import is_missing_column_error
 from .forms import LoginForm, RegisterForm, WeeklyMenuForm, SuggestionForm
 from .models import DailyMenu, Lunch, MealOption, MealRating, Suggestion, UserProfile
 
@@ -106,15 +107,21 @@ def _meal_rating_table_exists():
 def _active_meal_options():
     try:
         return list(MealOption.objects.filter(is_active=True).values("name", "advance_days"))
-    except (OperationalError, ProgrammingError) as exc:
+    except (OperationalError, ProgrammingError) as error:
+        if not is_missing_column_error(error, "advance_days"):
+            raise
         logger.warning(
             "MealOption.advance_days column is unavailable; falling back to the default advance delay: %s",
-            exc,
+            error,
         )
         return [
             {"name": name, "advance_days": DEFAULT_ADVANCE_DAYS}
             for name in MealOption.objects.filter(is_active=True).values_list("name", flat=True)
         ]
+
+
+def _active_meal_option_map():
+    return {option["name"]: option["advance_days"] for option in _active_meal_options()}
 
 
 def index(request):
@@ -315,7 +322,7 @@ def save_lunch(request):
         Lunch.objects.filter(user=request.user, lunch_date=lunch_date).delete()
         return JsonResponse({"status": "success", "message": "Réservation annulée."})
 
-    options_map = {item["name"]: item["advance_days"] for item in _active_meal_options()}
+    options_map = _active_meal_option_map()
 
     if lunch not in options_map:
         return JsonResponse(

@@ -1,3 +1,6 @@
+from unittest.mock import patch
+
+from django.db import ProgrammingError
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.test import TestCase
@@ -39,6 +42,18 @@ class InitDbCommandTests(TestCase):
         call_command("init_db")
         count_after_second = MealOption.objects.count()
         self.assertEqual(count_after_first, count_after_second)
+
+    def test_init_db_falls_back_when_advance_days_column_is_missing(self):
+        def side_effect(*, name, defaults):
+            if "advance_days" in defaults:
+                raise ProgrammingError("column reservations_mealoption.advance_days does not exist")
+            return MealOption(name=name), True
+
+        with patch(
+            "reservations.management.commands.init_db.MealOption.objects.update_or_create",
+            side_effect=side_effect,
+        ):
+            call_command("init_db")
 
 
 class SeedJuneMenusCommandTests(TestCase):

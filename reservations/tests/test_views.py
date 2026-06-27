@@ -336,6 +336,33 @@ class CalendarAndLunchTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(Lunch.objects.filter(user=self.user, lunch_date=future).exists())
 
+    def test_save_lunch_falls_back_when_advance_days_column_is_missing(self):
+        self.client.login(username="jane", password="secret123")
+        future = date.today() + timedelta(days=8)
+        original_values = QuerySet.values
+
+        def values_with_missing_advance_days(queryset, *fields, **expressions):
+            if fields == ("name", "advance_days"):
+                raise ProgrammingError('column reservations_mealoption.advance_days does not exist')
+            return original_values(queryset, *fields, **expressions)
+
+        with patch.object(QuerySet, "values", autospec=True, side_effect=values_with_missing_advance_days):
+            response = self.client.post(
+                reverse("save_lunch"),
+                data=json.dumps(
+                    {
+                        "day": future.day,
+                        "month": future.month,
+                        "year": future.year,
+                        "lunch": "Plat du jour",
+                    }
+                ),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Lunch.objects.filter(user=self.user, lunch_date=future).exists())
+
     def test_save_lunch_cancellation_deletes_reservation(self):
         self.client.login(username="jane", password="secret123")
         future = date.today() + timedelta(days=8)
