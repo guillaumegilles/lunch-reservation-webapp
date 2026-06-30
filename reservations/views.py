@@ -26,6 +26,7 @@ DEFAULT_DAILY_MENU = "Plat du jour"
 DEFAULT_ADVANCE_DAYS = 7
 
 logger = logging.getLogger(__name__)
+_missing_table_warnings_logged = set()
 
 FRENCH_WEEKDAY_NAMES = {
     0: "Lundi",
@@ -101,7 +102,15 @@ def _calendar_date(year, month, day):
 
 
 def _meal_rating_table_exists():
-    return MealRating._meta.db_table in connection.introspection.table_names()
+    table_name = MealRating._meta.db_table
+    exists = table_name in connection.introspection.table_names()
+    if not exists and table_name not in _missing_table_warnings_logged:
+        logger.warning(
+            "MealRating table %s is unavailable; ratings are disabled. Verify that migration 0006_mealrating ran against the current database.",
+            table_name,
+        )
+        _missing_table_warnings_logged.add(table_name)
+    return exists
 
 
 def _active_meal_options():
@@ -122,6 +131,42 @@ def _active_meal_options():
 
 def _active_meal_option_map():
     return {option["name"]: option["advance_days"] for option in _active_meal_options()}
+
+
+def _is_salad_option(option_name):
+    return "salade" in (option_name or "").casefold()
+
+
+def _is_option_selectable(lunch_date, advance_days, today):
+    return lunch_date >= today + timedelta(days=advance_days)
+
+
+def _available_meal_options(active_options, lunch_date, today):
+    return [
+        option
+        for option in active_options
+        if _is_option_selectable(lunch_date, option["advance_days"], today)
+    ]
+
+
+def _salad_unavailable_notice(active_options, available_options):
+    available_names = {option["name"] for option in available_options}
+    filtered_salads = [
+        option
+        for option in active_options
+        if _is_salad_option(option["name"]) and option["name"] not in available_names
+    ]
+    if not filtered_salads:
+        return ""
+    return "La salade doit être commandée au moins 48 heures à l'avance."
+
+
+def _unavailable_option_message(option_name, advance_days):
+    if _is_salad_option(option_name):
+        if advance_days == 2:
+            return "La salade doit être commandée au moins 48 heures à l'avance."
+        return f"La salade doit être commandée au moins {advance_days} jours à l'avance."
+    return f"Cette option doit être réservée au moins {advance_days} jours à l'avance."
 
 
 def index(request):
@@ -242,8 +287,6 @@ def calendar_view(request):
     db_menus_qs = DailyMenu.objects.filter(date__year=year, date__month=month)
     db_menus_by_day = {m.date.day: m.menu for m in db_menus_qs}
     active_options = _active_meal_options()
-    active_option_names = [opt["name"] for opt in active_options]
-    min_advance_days = min((opt["advance_days"] for opt in active_options), default=2)
     ratings_enabled = _meal_rating_table_exists()
 
     ratings_by_lunch_id = (
@@ -264,7 +307,10 @@ def calendar_view(request):
            continue
        lunch = lunches_by_day.get(d)
        menu_label = _menu_for_date(current_date, db_menus_by_day)
-       days_until = (current_date - today).days
+       available_options = _available_meal_options(active_options, current_date, today)
+       available_option_names = [option["name"] for option in available_options]
+       unavailable_notice = _salad_unavailable_notice(active_options, available_options)
+       lunch_choice = lunch.lunch_choice if lunch else ""
        days.append(
            {
                "day": d,
@@ -272,11 +318,14 @@ def calendar_view(request):
                "month_name_fr": month_name_fr,
                "full_label": _full_date_label(current_date),
                "menu": menu_label,
-               "lunch": lunch.lunch_choice if lunch else "",
-               "default_option": _default_meal_option(menu_label, active_option_names),
+               "lunch": lunch_choice,
+               "available_options": available_options,
+               "available_options_json": json.dumps(available_options, ensure_ascii=False),
+               "default_option": _default_meal_option(menu_label, available_option_names),
+               "unavailable_notice": unavailable_notice,
                "rating": ratings_by_lunch_id.get(lunch.id) if lunch and ratings_enabled else None,
-               "days_until": days_until,
-               "can_reserve": days_until >= min_advance_days,
+               "can_reserve": bool(available_options),
+               "can_select_lunch": bool(available_options or lunch_choice or unavailable_notice),
                "can_rate": current_date < today and lunch is not None,
            }
        )
@@ -322,7 +371,8 @@ def save_lunch(request):
         Lunch.objects.filter(user=request.user, lunch_date=lunch_date).delete()
         return JsonResponse({"status": "success", "message": "Réservation annulée."})
 
-    options_map = _active_meal_option_map()
+    active_options = _active_meal_options()
+    options_map = {option["name"]: option["advance_days"] for option in active_options}
 
     if lunch not in options_map:
         return JsonResponse(
@@ -334,11 +384,11 @@ def save_lunch(request):
         )
 
     advance_days = options_map[lunch]
-    if lunch_date < localdate() + timedelta(days=advance_days):
+    if not _is_option_selectable(lunch_date, advance_days, localdate()):
         return JsonResponse(
             {
                 "status": "error",
-                "message": f"Cette option doit être réservée au moins {advance_days} jours à l'avance.",
+                "message": _unavailable_option_message(lunch, advance_days),
             },
             status=400,
         )

@@ -20,8 +20,8 @@ admin.site.register(User, UserAdminWithProfile)
 
 @admin.register(MealOption)
 class MealOptionAdmin(admin.ModelAdmin):
-    list_display = ("name", "is_active", "order")
-    list_editable = ("is_active", "order")
+    list_display = ("name", "is_active", "advance_days", "order")
+    list_editable = ("is_active", "advance_days", "order")
     ordering = ("order", "name")
 
 

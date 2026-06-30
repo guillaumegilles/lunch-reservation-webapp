@@ -13,6 +13,13 @@ from django.utils.timezone import localdate
 from reservations.models import DailyMenu, Lunch, MealOption, MealRating, Suggestion, UserProfile
 
 
+def previous_weekday(current_date, minimum_days=1):
+    candidate = current_date - timedelta(days=minimum_days)
+    while candidate.weekday() >= 5:
+        candidate -= timedelta(days=1)
+    return candidate
+
+
 class AuthFlowTests(TestCase):
     def test_register_creates_user_and_redirects(self):
         response = self.client.post(
@@ -256,7 +263,7 @@ class CalendarAndLunchTests(TestCase):
 
     def test_calendar_exposes_existing_rating_for_past_lunch(self):
         self.client.login(username="jane", password="secret123")
-        past = date.today() - timedelta(days=2)
+        past = previous_weekday(date.today(), minimum_days=2)
         lunch = Lunch.objects.create(user=self.user, lunch_date=past, lunch_choice="Plat du jour")
         MealRating.objects.create(lunch=lunch, rating=4)
 
@@ -269,6 +276,130 @@ class CalendarAndLunchTests(TestCase):
         days = {d["day"]: d for d in response.context["days"]}
         self.assertEqual(days[past.day]["rating"], 4)
         self.assertTrue(days[past.day]["can_rate"])
+
+    def test_save_lunch_allows_salad_at_inclusive_two_day_threshold(self):
+        self.client.login(username="jane", password="secret123")
+        MealOption.objects.create(name="🥗 Salade César", is_active=True, advance_days=2)
+        monday = date(2030, 1, 7)
+        target = date(2030, 1, 9)
+
+        with patch("reservations.views.localdate", return_value=monday):
+            response = self.client.post(
+                reverse("save_lunch"),
+                data=json.dumps({"day": target.day, "month": target.month, "year": target.year, "lunch": "🥗 Salade César"}),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Lunch.objects.filter(user=self.user, lunch_date=target, lunch_choice="🥗 Salade César").exists())
+
+    def test_save_lunch_allows_salad_from_friday_to_monday(self):
+        self.client.login(username="jane", password="secret123")
+        MealOption.objects.create(name="🥗 Salade César", is_active=True, advance_days=2)
+        friday = date(2030, 1, 11)
+        monday = date(2030, 1, 14)
+
+        with patch("reservations.views.localdate", return_value=friday):
+            response = self.client.post(
+                reverse("save_lunch"),
+                data=json.dumps({"day": monday.day, "month": monday.month, "year": monday.year, "lunch": "🥗 Salade César"}),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Lunch.objects.filter(user=self.user, lunch_date=monday, lunch_choice="🥗 Salade César").exists())
+
+    def test_calendar_exposes_salad_notice_and_filtered_options_for_too_close_date(self):
+        self.client.login(username="jane", password="secret123")
+        MealOption.objects.create(name="🥗 Salade César", is_active=True, advance_days=2)
+        MealOption.objects.create(name="Soupe du jour", is_active=True, order=2, advance_days=1)
+        monday = date(2030, 1, 7)
+        tuesday = date(2030, 1, 8)
+
+        with patch("reservations.views.localdate", return_value=monday):
+            response = self.client.get(
+                reverse("calendar"),
+                {"year": tuesday.year, "month": tuesday.month},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        days = {d["day"]: d for d in response.context["days"]}
+        self.assertEqual(days[tuesday.day]["unavailable_notice"], "La salade doit être commandée au moins 48 heures à l'avance.")
+        self.assertEqual([option["name"] for option in days[tuesday.day]["available_options"]], ["Soupe du jour"])
+        self.assertTrue(days[tuesday.day]["can_select_lunch"])
+
+    def test_save_lunch_rejects_too_close_salad_but_allows_other_eligible_meal(self):
+        self.client.login(username="jane", password="secret123")
+        MealOption.objects.create(name="🥗 Salade César", is_active=True, advance_days=2)
+        MealOption.objects.create(name="Soupe du jour", is_active=True, order=2, advance_days=1)
+        monday = date(2030, 1, 7)
+        tuesday = date(2030, 1, 8)
+
+        with patch("reservations.views.localdate", return_value=monday):
+            salad_response = self.client.post(
+                reverse("save_lunch"),
+                data=json.dumps({"day": tuesday.day, "month": tuesday.month, "year": tuesday.year, "lunch": "🥗 Salade César"}),
+                content_type="application/json",
+            )
+            soup_response = self.client.post(
+                reverse("save_lunch"),
+                data=json.dumps({"day": tuesday.day, "month": tuesday.month, "year": tuesday.year, "lunch": "Soupe du jour"}),
+                content_type="application/json",
+            )
+
+        self.assertEqual(salad_response.status_code, 400)
+        self.assertJSONEqual(
+            salad_response.content,
+            {"status": "error", "message": "La salade doit être commandée au moins 48 heures à l'avance."},
+        )
+        self.assertEqual(soup_response.status_code, 200)
+        self.assertTrue(Lunch.objects.filter(user=self.user, lunch_date=tuesday, lunch_choice="Soupe du jour").exists())
+
+    def test_calendar_keeps_existing_salad_visible_below_cutoff(self):
+        self.client.login(username="jane", password="secret123")
+        MealOption.objects.create(name="🥗 Salade César", is_active=True, advance_days=2)
+        monday = date(2030, 1, 7)
+        tuesday = date(2030, 1, 8)
+        Lunch.objects.create(user=self.user, lunch_date=tuesday, lunch_choice="🥗 Salade César")
+
+        with patch("reservations.views.localdate", return_value=monday):
+            response = self.client.get(
+                reverse("calendar"),
+                {"year": tuesday.year, "month": tuesday.month},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        days = {d["day"]: d for d in response.context["days"]}
+        self.assertEqual(days[tuesday.day]["lunch"], "🥗 Salade César")
+        self.assertEqual(days[tuesday.day]["available_options"], [])
+        self.assertTrue(days[tuesday.day]["can_select_lunch"])
+
+    def test_save_lunch_prevents_reselecting_salad_after_cancellation_below_cutoff(self):
+        self.client.login(username="jane", password="secret123")
+        MealOption.objects.create(name="🥗 Salade César", is_active=True, advance_days=2)
+        monday = date(2030, 1, 7)
+        tuesday = date(2030, 1, 8)
+        Lunch.objects.create(user=self.user, lunch_date=tuesday, lunch_choice="🥗 Salade César")
+
+        with patch("reservations.views.localdate", return_value=monday):
+            cancel_response = self.client.post(
+                reverse("save_lunch"),
+                data=json.dumps({"day": tuesday.day, "month": tuesday.month, "year": tuesday.year, "lunch": ""}),
+                content_type="application/json",
+            )
+            reselect_response = self.client.post(
+                reverse("save_lunch"),
+                data=json.dumps({"day": tuesday.day, "month": tuesday.month, "year": tuesday.year, "lunch": "🥗 Salade César"}),
+                content_type="application/json",
+            )
+
+        self.assertEqual(cancel_response.status_code, 200)
+        self.assertFalse(Lunch.objects.filter(user=self.user, lunch_date=tuesday).exists())
+        self.assertEqual(reselect_response.status_code, 400)
+        self.assertJSONEqual(
+            reselect_response.content,
+            {"status": "error", "message": "La salade doit être commandée au moins 48 heures à l'avance."},
+        )
 
     def test_calendar_disables_ratings_when_table_is_missing(self):
         self.client.login(username="jane", password="secret123")
@@ -563,7 +694,7 @@ class AdminSummaryTests(TestCase):
 
     def test_admin_summary_shows_average_and_individual_ratings(self):
         self.client.login(username="staff", password="secret123")
-        target_date = date.today() - timedelta(days=2)
+        target_date = previous_weekday(date.today(), minimum_days=2)
         lunch_one = Lunch.objects.create(user=self.user, lunch_date=target_date, lunch_choice="Plat du jour")
         MealRating.objects.create(lunch=lunch_one, rating=4)
         second_user = User.objects.create_user(username="user2", password="secret123")

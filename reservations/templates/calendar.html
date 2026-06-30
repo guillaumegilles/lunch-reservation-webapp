@@ -21,8 +21,8 @@
 
 <div class="row g-2 mb-4">
 {% for d in days %}
-    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-full-label="{{ d.full_label|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" data-default-option="{{ d.default_option|escape }}" data-rating="{{ d.rating|default_if_none:'' }}" data-days-until="{{ d.days_until }}" data-can-reserve="{{ d.can_reserve|yesno:'true,false' }}" data-can-rate="{{ d.can_rate|yesno:'true,false' }}" {% if d.can_reserve or d.can_rate %}onclick="selectDay({{ d.day }})"{% endif %}>
-        <div class="p-2 border rounded text-center h-100 selectable-day {% if not d.can_reserve and not d.can_rate %}locked-day{% endif %}">
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-1 calendar-day" id="day-{{ d.day }}" data-menu="{{ d.menu|escape }}" data-full-label="{{ d.full_label|escape }}" data-lunch="{{ d.lunch|default:''|escape }}" data-default-option="{{ d.default_option|escape }}" data-available-options="{{ d.available_options_json|escape }}" data-unavailable-notice="{{ d.unavailable_notice|default:''|escape }}" data-rating="{{ d.rating|default_if_none:'' }}" data-can-reserve="{{ d.can_reserve|yesno:'true,false' }}" data-can-select-lunch="{{ d.can_select_lunch|yesno:'true,false' }}" data-can-rate="{{ d.can_rate|yesno:'true,false' }}" {% if d.can_select_lunch or d.can_rate %}onclick="selectDay({{ d.day }})"{% endif %}>
+        <div class="p-2 border rounded text-center h-100 selectable-day {% if not d.can_select_lunch and not d.can_rate %}locked-day{% endif %}">
             <div>{{ d.full_label }}</div>
             {% if d.lunch %}
             <div class="small text-muted lunch-label">{{ d.lunch }}</div>
@@ -49,10 +49,16 @@
                     <button id="cancelLunchButton" class="btn btn-outline-danger w-100 mb-2" onclick="cancelLunch()">Annuler la réservation</button>
                 </div>
 
+                <div id="lunchUnavailableNotice" class="alert alert-warning small mt-3 mb-0 d-none"></div>
+
                 <div id="ratingSection" class="mt-4 d-none">
                     <h5>Noter ce repas</h5>
                     <div id="ratingStars" class="rating-stars mb-2"></div>
                     <p id="ratingStatus" class="small text-muted mb-2"></p>
+                </div>
+
+                <div id="ratingUnavailableNotice" class="alert alert-warning small mt-3 mb-0 d-none">
+                    La notation n'est pas encore disponible sur ce déploiement.
                 </div>
 
                 <p id="statusMsg" class="text-center small"></p>
@@ -65,7 +71,6 @@
 let selectedDay = null;
 const year = {{ year }};
 const month = {{ month }};
-const options = {{ options|safe }};
 const ratingsEnabled = {{ ratings_enabled|yesno:'true,false' }};
 
 function getCookie(name) {
@@ -87,7 +92,11 @@ function canRateDay(dayContainer) {
     return dayContainer.dataset.canRate === "true";
 }
 
-function selectDay(day) {
+function getAvailableOptions(dayContainer) {
+    return JSON.parse(dayContainer.dataset.availableOptions || "[]");
+}
+
+function selectDay(day, preserveStatusMessage = false) {
     document.querySelectorAll('.selectable-day').forEach(el => el.classList.remove('bg-primary', 'text-white'));
     const dayContainer = document.getElementById(`day-${day}`);
     const el = dayContainer.querySelector('.selectable-day');
@@ -96,23 +105,45 @@ function selectDay(day) {
     selectedDay = day;
     const existingLunch = dayContainer.dataset.lunch;
     const defaultOption = dayContainer.dataset.defaultOption;
-    const canReserve = dayContainer.dataset.canReserve === "true";
+    const availableOptions = getAvailableOptions(dayContainer);
     const canRate = canRateDay(dayContainer);
     const existingRating = dayContainer.dataset.rating ? parseInt(dayContainer.dataset.rating, 10) : 0;
-    const daysUntil = parseInt(dayContainer.dataset.daysUntil, 10);
+    const unavailableNotice = dayContainer.dataset.unavailableNotice;
 
     document.getElementById('selectedDay').innerText = dayContainer.dataset.fullLabel;
     document.getElementById('selectedLunch').innerText = existingLunch ? `Repas enregistré : ${existingLunch}` : "Aucune réservation enregistrée.";
-    document.getElementById('statusMsg').innerText = "";
+    if (!preserveStatusMessage) {
+        document.getElementById('statusMsg').innerText = "";
+    }
 
-    toggleReservationSection(canReserve);
+    toggleReservationSection(availableOptions.length > 0 || Boolean(existingLunch));
+    toggleLunchSelectionControls(availableOptions.length > 0);
+    toggleCancelButton(Boolean(existingLunch));
+    toggleLunchUnavailableNotice(unavailableNotice);
     toggleRatingSection(ratingsEnabled && canRate, existingRating);
-    syncLunchOption(existingLunch, defaultOption, daysUntil);
+    toggleRatingUnavailableNotice(!ratingsEnabled && canRate);
+    syncLunchOption(existingLunch, defaultOption, availableOptions);
 }
 
 function toggleReservationSection(show) {
     const reservationSection = document.getElementById('reservationSection');
     reservationSection.classList.toggle('d-none', !show);
+}
+
+function toggleLunchSelectionControls(show) {
+    document.getElementById('lunchOption').classList.toggle('d-none', !show);
+    document.getElementById('saveLunchButton').classList.toggle('d-none', !show);
+}
+
+function toggleCancelButton(show) {
+    document.getElementById('cancelLunchButton').classList.toggle('d-none', !show);
+}
+
+function toggleLunchUnavailableNotice(notice) {
+    const noticeElement = document.getElementById('lunchUnavailableNotice');
+    const show = Boolean(notice);
+    noticeElement.classList.toggle('d-none', !show);
+    noticeElement.innerText = show ? notice : "";
 }
 
 function toggleRatingSection(show, currentRating) {
@@ -126,19 +157,22 @@ function toggleRatingSection(show, currentRating) {
     renderRatingStars(currentRating);
 }
 
-function syncLunchOption(existingLunch, defaultOption, daysUntil) {
+function toggleRatingUnavailableNotice(show) {
+    document.getElementById('ratingUnavailableNotice').classList.toggle('d-none', !show);
+}
+
+function syncLunchOption(existingLunch, defaultOption, availableOptions) {
     const select = document.getElementById('lunchOption');
     select.innerHTML = "<option value=\"\">-- Choisir un repas --</option>";
 
-    const available = options.filter(opt => daysUntil >= opt.advance_days);
-    available.forEach((opt) => {
+    availableOptions.forEach((opt) => {
         const o = document.createElement('option');
         o.value = opt.name;
         o.textContent = opt.name;
         select.appendChild(o);
     });
 
-    const names = available.map(opt => opt.name);
+    const names = availableOptions.map(opt => opt.name);
     select.value = names.includes(existingLunch) ? existingLunch : (names.includes(defaultOption) ? defaultOption : "");
 }
 
@@ -192,7 +226,7 @@ async function saveLunch() {
     }
     label.innerText = lunch;
     dayContainer.dataset.lunch = lunch;
-    document.getElementById('selectedLunch').innerText = `Repas enregistré : ${lunch}`;
+    selectDay(selectedDay, true);
 }
 
 async function saveMealRating(rating) {
@@ -260,7 +294,7 @@ async function cancelLunch() {
         label.remove();
     }
     dayBox.parentElement.dataset.lunch = "";
-    document.getElementById('selectedLunch').innerText = "Aucune réservation enregistrée.";
+    selectDay(selectedDay, true);
 }
 </script>
 {% endblock %}
