@@ -24,6 +24,7 @@ from .models import DailyMenu, Lunch, MealOption, MealRating, Suggestion, UserPr
 
 DEFAULT_DAILY_MENU = "Plat du jour"
 DEFAULT_ADVANCE_DAYS = 7
+SALAD_ADVANCE_DAYS = 2
 
 logger = logging.getLogger(__name__)
 _missing_table_warnings_logged = set()
@@ -120,13 +121,23 @@ def _active_meal_options():
         if not is_missing_column_error(error, "advance_days"):
             raise
         logger.warning(
-            "MealOption.advance_days column is unavailable; falling back to the default advance delay: %s",
+            "MealOption.advance_days column is unavailable; falling back to per-option advance delays: %s",
             error,
         )
         return [
-            {"name": name, "advance_days": DEFAULT_ADVANCE_DAYS}
+            {"name": name, "advance_days": _fallback_advance_days(name)}
             for name in MealOption.objects.filter(is_active=True).values_list("name", flat=True)
         ]
+
+
+def _fallback_advance_days(option_name):
+    """Advance delay to use when the advance_days column is unavailable.
+
+    Salads keep their 48h (2 day) window; every other option keeps the
+    standard 7 day rule, so the salad feature never collapses into the
+    7-day meal rule when the migration has not run yet.
+    """
+    return SALAD_ADVANCE_DAYS if _is_salad_option(option_name) else DEFAULT_ADVANCE_DAYS
 
 
 def _active_meal_option_map():
